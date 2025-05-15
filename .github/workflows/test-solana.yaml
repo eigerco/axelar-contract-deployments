@@ -1,0 +1,57 @@
+name: Test Solana
+
+on: pull_request
+
+jobs:
+  check-relevant-changes:
+    name: Check for Relevant Changes
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    outputs:
+      run_tests: ${{ steps.filter.outputs.solana == 'true' || steps.filter.outputs.github == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            solana:
+              - 'solana/**'
+            github:
+              - '.github/workflows/test-solana.yaml'
+      - name: Summarize Changes
+        run: |
+          echo "Changes in solana: ${{ steps.filter.outputs.solana }}"
+          echo "Changes in github: ${{ steps.filter.outputs.github }}"
+
+  test-solana:
+    name: Test Solana
+    needs: check-relevant-changes
+    if: ${{ needs.check-relevant-changes.outputs.run_tests == 'true' }}
+    runs-on: blacksmith-8vcpu-ubuntu-2204
+    steps:
+      - name: Setup Solana network
+        uses: ./.github/actions/setup-solana
+
+     ###### Environment Variables ######
+
+      - name: Prepare Environment Variables
+        id: env_vars
+        run: |
+          echo "SOME_VAR=some_value" >> $GITHUB_OUTPUT
+          # TODO: Generate secp256k1 keypair to use as axelar signer and set env var
+
+      ###### Command: Initialize Programs ######
+
+
+      - name: Initialize Gateway
+        run: |
+          solana/solana-axelar-cli send gateway init --operator $(solana address) --previous-signers-retention 3 --minimum-rotation-delay 86400 --signer ${{ steps.env_vars.outputs.accountAddress }} --nonce ${{ steps.env_vars.outputs.nonce }}
+
+      - name: Initialize Gas Service
+        run: |
+          solana/solana-axelar-cli send gas-service init --authority $(solana address) --salt "salt"
+
+      - name: Initialize ITS
+        run: |
+          solana/solana-axelar-cli send its init --operator $(solana address)
+
