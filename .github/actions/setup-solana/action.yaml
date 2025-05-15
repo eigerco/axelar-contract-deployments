@@ -1,0 +1,98 @@
+name: Setup Solana CLI & Network
+description: Install Solana CLI, setup contracts and start a local Solana network
+
+runs:
+    using: 'composite'
+    steps:
+        - name: Install stable Rust toolchain
+          uses: dtolnay/rust-toolchain@stable
+
+        - name: Checkout solana-axelar repo
+          uses: actions/checkout@v4
+          with:
+            repository: eigerco/solana-axelar
+            path: solana-axelar
+
+        - name: Build contracts
+          shell: bash
+          working-directory: solana-axelar/solana
+          run: |
+            cargo xtask build
+
+        - name: Install Solana CLI
+          shell: bash
+          run: |
+            curl --proto '=https' --tlsv1.2 -sSfL https://solana-install.solana.workers.dev | bash
+            echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+
+        - name: Configure Solana CLI
+          shell: bash
+          run: |
+            solana config set --url localhost
+            solana-keygen new --no-bip39-passphrase --force
+
+
+        - name: Start Solana test validator
+          shell: bash
+          run: |
+            # TODO: Fetch program ids from solana-axelar/solana/programs/${program}/src/lib.rs `declare_id!` call.
+            
+            solana-test-validator \
+              --reset \
+              --upgradeable-bpf-program "${gateway_id:?}" solana-axelar/solana/target/sbf-solana-solana/release/axelar_solana_gateway.so $(solana address) \
+              --upgradeable-bpf-program "${its_id:?}" solana-axelar/solana/target/sbf-solana-solana/release/axelar_solana_its.so $(solana address) \
+              --upgradeable-bpf-program "${governance_id:?}" solana-axelar/solana/target/sbf-solana-solana/release/axelar_solana_governance.so $(solana address) \
+              --upgradeable-bpf-program "${gas_service_id:?}" solana-axelar/solana/target/sbf-solana-solana/release/axelar_solana_gas_service.so $(solana address) \ 
+              --upgradeable-bpf-program "${multicall_id:?}" solana-axelar/solana/target/sbf-solana-solana/release/axelar_solana_multicall.so $(solana address) \
+              --quiet &
+
+        - name: Wait for Solana network
+          shell: bash
+          run: |
+            MAX_WAIT=120
+            ELAPSED=0
+            RPC_URL=http://localhost:8899
+
+            echo "Waiting for Solana network to become ready..."
+            while true; do
+              echo "Checking RPC: ${RPC_URL}..."
+              if curl -s "${RPC_URL}/health" | grep -q "ok"; then
+                echo "✅ Solana Network is ready"
+                exit 0
+              fi
+
+              sleep 2
+              ELAPSED=$((ELAPSED + 2))
+
+              if [ "${ELAPSED}" -ge "${MAX_WAIT}" ]; then
+                echo "Timed out after ${MAX_WAIT} seconds waiting for Solana network."
+                exit 1
+              fi
+
+              echo "  - Solana Network not ready yet"
+            done
+
+        - name: Prepare local.json
+          shell: bash
+          run: |
+            echo '{
+                "chains": {
+                    "solana-localnet": {
+                        "name": "Solana Local",
+                        "axelarId": "solana-localnet",
+                        "chainType": "svm",
+                        "tokenSymbol": "SOL",
+                        "rpc": "${{ steps.env.outputs.rpc }}",
+                        "contracts": {}
+                    }
+                }
+            }' > ./axelar-chains-config/info/local.json
+
+        - name: Display local.json
+          shell: bash
+          run: cat ./axelar-chains-config/info/local.json
+
+        - name: Fund account
+          shell: bash
+          run: |
+            solana airdrop 10
