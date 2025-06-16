@@ -1,15 +1,18 @@
 'use strict';
 
 import { Command } from 'commander';
-import { hash, stark, constants, RpcProvider, Account, ec } from 'starknet';
+import { hash, stark, constants, RpcProvider, Account, ec, CallData } from 'starknet';
 import * as fs from 'fs';
 import * as path from 'path';
 import { loadConfig } from '../common';
 import { getStarknetProvider } from './utils';
-import { UnsignedTransaction } from './types';
+
+// Constant for Starknet chain name in config
+const STARKNET_CHAIN = 'starknet';
 
 import TransportNodeHid from '@ledgerhq/hw-transport-node-hid';
 import { StarknetClient } from '@ledgerhq/hw-app-starknet';
+import { UnsignedTransaction } from './types';
 
 /**
  * Compute transaction hash for Starknet v3 transaction
@@ -21,9 +24,9 @@ function computeTransactionHash(
     // For INVOKE transactions
     if (transaction.type === 'INVOKE') {
         const calldata = transaction.calls.flatMap(call => [
-            call.contract_address,
-            hash.getSelectorFromName(call.entry_point),
-            ...call.calldata
+            call.contractAddress,
+            hash.getSelectorFromName(call.entrypoint),
+            ...CallData.toCalldata(call.calldata)
         ]);
 
         return hash.calculateInvokeTransactionHash({
@@ -68,16 +71,16 @@ async function signWithLedger(
         console.log(`  Calls: ${transaction.calls.length}`);
         transaction.calls.forEach((call, i) => {
             console.log(`    Call ${i + 1}:`);
-            console.log(`      Contract: ${call.contract_address}`);
-            console.log(`      Entrypoint: ${call.entry_point}`);
+            console.log(`      Contract: ${call.contractAddress}`);
+            console.log(`      Entrypoint: ${call.entrypoint}`);
             console.log(`      Calldata length: ${call.calldata.length}`);
         });
     }
 
     // Compute transaction hash
-    console.log('\n🔐 Computing transaction hash...');
-    const txHash = computeTransactionHash(transaction, chainId);
-    console.log(`Transaction hash: ${txHash}`);
+    // console.log('\n🔐 Computing transaction hash...');
+    // const txHash = computeTransactionHash(transaction, chainId);
+    // console.log(`Transaction hash: ${txHash}`);
 
     let transport;
     let app;
@@ -101,45 +104,43 @@ async function signWithLedger(
         console.log('\n✍️  Please review and sign the transaction on your Ledger device...');
         console.log('⚠️  Note: You will see the transaction hash on your device screen.');
 
-        console.log({
-            accountAddress: transaction.sender_address,
-            tip: transaction.tip,
-            resourceBounds: transaction.resource_bounds,
-            paymaster_data: transaction.paymaster_data,
-            chainId: chainId,
-            nonce: transaction.nonce, // TODO: Set correct one by querying contract. Will it work if a lot of calls are made to the contract?
-            nonceDataAvailabilityMode: transaction.nonce_data_availability_mode,
-            feeDataAvailabilityMode: transaction.fee_data_availability_mode,
-            account_deployment_data: transaction.account_deployment_data
-        });
-
-        const signature = await app.signTx(ledgerPath, transaction.calls, {
-            accountAddress: transaction.sender_address,
-            tip: transaction.tip,
-            resourceBounds: transaction.resource_bounds,
-            paymaster_data: transaction.paymaster_data,
-            chainId: chainId,
-            nonce: transaction.nonce, // TODO: Set correct one by querying contract. Will it work if a lot of calls are made to the contract?
-            nonceDataAvailabilityMode: transaction.nonce_data_availability_mode,
-            feeDataAvailabilityMode: transaction.fee_data_availability_mode,
-            account_deployment_data: transaction.account_deployment_data
-        });
+        const signature = await app.signTx(ledgerPath, transaction.calls,
+            {
+                accountAddress: transaction.sender_address,
+                tip: transaction.tip,
+                resourceBounds: transaction.resource_bounds,
+                chainId: chainId,
+                nonce: transaction.nonce, // TODO: Set correct one by querying contract. Will it work if a lot of calls are made to the contract?
+                nonceDataAvailabilityMode: transaction.nonce_data_availability_mode,
+                feeDataAvailabilityMode: transaction.fee_data_availability_mode,
+            });
 
         // Check if signature contains an error
-        if (signature.errorMessage || signature.returnCode) {
+        if (signature.errorMessage && signature.returnCode !== 36864 && signature.errorMessage !== "No error") {
             throw new Error(`${signature.errorMessage || 'Unknown error'} (return code: ${signature.returnCode})`);
         }
 
         console.log('\n✅ Transaction signed successfully!');
-        console.log(`Signature: ${JSON.stringify(signature)}`);
 
         // Create signed transaction object
         // Handle different signature formats from Ledger
         let signatureArray: string[];
-        if (Array.isArray(signature)) {
-            signatureArray = signature;
-        } else if (signature.r && signature.s) {
-            signatureArray = [signature.r, signature.s];
+        if (signature.r && signature.s && signature.h) {
+            // Convert Buffer byte arrays to hex strings (field elements)
+            if (!Buffer.isBuffer(signature.h) || !Buffer.isBuffer(signature.s) || !Buffer.isBuffer(signature.r)) {
+                throw new Error('Unexpected signature format - H, S or R are not buffers');
+            }
+
+            // Convert to hex strings with 0x prefix
+            const h = '0x' + signature.h.toString('hex');
+            const r = '0x' + signature.r.toString('hex');
+            const s = '0x' + signature.s.toString('hex');
+
+            signatureArray = [r, s];
+            console.log(`\n📝 Signature:`);
+            console.log(`  TX Hash: ${h}`);
+            console.log(`  R: ${r}`);
+            console.log(`  S: ${s}`);
         } else {
             throw new Error(`Unexpected signature format: ${JSON.stringify(signature)}`);
         }
@@ -199,10 +200,10 @@ async function main(): Promise<void> {
 
     // Get chain ID from config
     const config = loadConfig(options.env);
-    const chain = config.chains.starknet;
+    const chain = config.chains[STARKNET_CHAIN];
 
     if (!chain) {
-        console.error(`❌ Starknet chain not found in ${options.env} configuration`);
+        console.error(`❌ ${STARKNET_CHAIN} chain not found in ${options.env} configuration`);
         process.exit(1);
     }
 

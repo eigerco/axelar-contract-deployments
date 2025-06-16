@@ -3,6 +3,9 @@
 import { Command } from 'commander';
 import { loadConfig } from '../common';
 import { addStarknetOptions } from './cli-utils';
+
+// Constant for Starknet chain name in config
+const STARKNET_CHAIN = 'starknet';
 import {
     getStarknetProvider,
     getStarknetAccount,
@@ -355,28 +358,25 @@ async function main(): Promise<void> {
     callContractCmd.action(async (destinationChain, destinationContractAddress, payload, options) => {
         validateStarknetOptions(options.env, options.offline, options.privateKey, options.accountAddress);
         const config = loadConfig(options.env);
-        const chains = options.chainNames.split(',').map(name => name.trim());
+        
+        const chain = config.chains[STARKNET_CHAIN];
+        if (!chain) {
+            throw new Error(`Chain ${STARKNET_CHAIN} not found in environment ${options.env}`);
+        }
 
-        for (const chainName of chains) {
-            const chain = config.chains[chainName];
-            if (!chain) {
-                throw new Error(`Chain ${chainName} not found in environment ${options.env}`);
-            }
+        try {
+            const cmdOptions = {
+                ...options,
+                destinationChain,
+                destinationContractAddress,
+                payload,
+            };
 
-            try {
-                const cmdOptions = {
-                    ...options,
-                    destinationChain,
-                    destinationContractAddress,
-                    payload,
-                };
-
-                const result = await callContract(config, { ...chain, name: chainName }, cmdOptions);
-                console.log(`✅ call-contract completed for ${chainName}\n`);
-            } catch (error) {
-                console.error(`❌ call-contract failed for ${chainName}: ${error.message}\n`);
-                process.exit(1);
-            }
+            const result = await callContract(config, { ...chain, name: STARKNET_CHAIN }, cmdOptions);
+            console.log(`✅ call-contract completed for ${STARKNET_CHAIN}\n`);
+        } catch (error) {
+            console.error(`❌ call-contract failed for ${STARKNET_CHAIN}: ${error.message}\n`);
+            process.exit(1);
         }
     });
 
@@ -392,27 +392,24 @@ async function main(): Promise<void> {
     approveCmd.action(async (messages, proof, options) => {
         validateStarknetOptions(options.env, options.offline, options.privateKey, options.accountAddress);
         const config = loadConfig(options.env);
-        const chains = options.chainNames.split(',').map(name => name.trim());
+        
+        const chain = config.chains[STARKNET_CHAIN];
+        if (!chain) {
+            throw new Error(`Chain ${STARKNET_CHAIN} not found in environment ${options.env}`);
+        }
 
-        for (const chainName of chains) {
-            const chain = config.chains[chainName];
-            if (!chain) {
-                throw new Error(`Chain ${chainName} not found in environment ${options.env}`);
-            }
+        try {
+            const cmdOptions = {
+                ...options,
+                messages: JSON.parse(messages),
+                proof: JSON.parse(proof),
+            };
 
-            try {
-                const cmdOptions = {
-                    ...options,
-                    messages: JSON.parse(messages),
-                    proof: JSON.parse(proof),
-                };
-
-                const result = await approveMessages(config, { ...chain, name: chainName }, cmdOptions);
-                console.log(`✅ approve-messages completed for ${chainName}\n`);
-            } catch (error) {
-                console.error(`❌ approve-messages failed for ${chainName}: ${error.message}\n`);
-                process.exit(1);
-            }
+            const result = await approveMessages(config, { ...chain, name: STARKNET_CHAIN }, cmdOptions);
+            console.log(`✅ approve-messages completed for ${STARKNET_CHAIN}\n`);
+        } catch (error) {
+            console.error(`❌ approve-messages failed for ${STARKNET_CHAIN}: ${error.message}\n`);
+            process.exit(1);
         }
     });
 
@@ -430,30 +427,27 @@ async function main(): Promise<void> {
     validateCmd.action(async (sourceChain, messageId, sourceAddress, payloadHash, options) => {
         validateStarknetOptions(options.env, options.offline, options.privateKey, options.accountAddress);
         const config = loadConfig(options.env);
-        const chains = options.chainNames.split(',').map(name => name.trim());
+        
+        const chain = config.chains[STARKNET_CHAIN];
+        if (!chain) {
+            throw new Error(`Chain ${STARKNET_CHAIN} not found in environment ${options.env}`);
+        }
 
-        for (const chainName of chains) {
-            const chain = config.chains[chainName];
-            if (!chain) {
-                throw new Error(`Chain ${chainName} not found in environment ${options.env}`);
-            }
+        try {
+            const cmdOptions = {
+                ...options,
+                sourceChain,
+                messageId,
+                sourceAddress,
+                payloadHash,
+            };
 
-            try {
-                const cmdOptions = {
-                    ...options,
-                    sourceChain,
-                    messageId,
-                    sourceAddress,
-                    payloadHash,
-                };
-
-                const result = await validateMessage(config, { ...chain, name: chainName }, cmdOptions);
-                console.log(`✅ validate-message completed for ${chainName}\n`);
+                const result = await validateMessage(config, { ...chain, name: STARKNET_CHAIN }, cmdOptions);
+                console.log(`✅ validate-message completed for ${STARKNET_CHAIN}\n`);
             } catch (error) {
-                console.error(`❌ validate-message failed for ${chainName}: ${error.message}\n`);
+                console.error(`❌ validate-message failed for ${STARKNET_CHAIN}: ${error.message}\n`);
                 process.exit(1);
             }
-        }
     });
 
     // Rotate signers command
@@ -468,27 +462,24 @@ async function main(): Promise<void> {
     rotateCmd.action(async (newSigners, proof, options) => {
         validateStarknetOptions(options.env, options.offline, options.privateKey, options.accountAddress);
         const config = loadConfig(options.env);
-        const chains = options.chainNames.split(',').map(name => name.trim());
+        
+        const chain = config.chains[STARKNET_CHAIN];
+        if (!chain) {
+            throw new Error(`Chain ${STARKNET_CHAIN} not found in environment ${options.env}`);
+        }
 
-        for (const chainName of chains) {
-            const chain = config.chains[chainName];
-            if (!chain) {
-                throw new Error(`Chain ${chainName} not found in environment ${options.env}`);
-            }
+        try {
+            const cmdOptions = {
+                ...options,
+                newSigners: JSON.parse(newSigners),
+                proof: JSON.parse(proof),
+            };
 
-            try {
-                const cmdOptions = {
-                    ...options,
-                    newSigners: JSON.parse(newSigners),
-                    proof: JSON.parse(proof),
-                };
-
-                const result = await rotateSigners(config, { ...chain, name: chainName }, cmdOptions);
-                console.log(`✅ rotate-signers completed for ${chainName}\n`);
-            } catch (error) {
-                console.error(`❌ rotate-signers failed for ${chainName}: ${error.message}\n`);
-                process.exit(1);
-            }
+            const result = await rotateSigners(config, { ...chain, name: STARKNET_CHAIN }, cmdOptions);
+            console.log(`✅ rotate-signers completed for ${STARKNET_CHAIN}\n`);
+        } catch (error) {
+            console.error(`❌ rotate-signers failed for ${STARKNET_CHAIN}: ${error.message}\n`);
+            process.exit(1);
         }
     });
 
@@ -507,30 +498,27 @@ async function main(): Promise<void> {
     isApprovedCmd.action(async (sourceChain, messageId, sourceAddress, contractAddress, payloadHash, options) => {
         validateStarknetOptions(options.env, options.offline, options.privateKey, options.accountAddress, false);
         const config = loadConfig(options.env);
-        const chains = options.chainNames.split(',').map(name => name.trim());
+        
+        const chain = config.chains[STARKNET_CHAIN];
+        if (!chain) {
+            throw new Error(`Chain ${STARKNET_CHAIN} not found in environment ${options.env}`);
+        }
 
-        for (const chainName of chains) {
-            const chain = config.chains[chainName];
-            if (!chain) {
-                throw new Error(`Chain ${chainName} not found in environment ${options.env}`);
-            }
+        try {
+            const cmdOptions = {
+                ...options,
+                sourceChain,
+                messageId,
+                sourceAddress,
+                contractAddress,
+                payloadHash,
+            };
 
-            try {
-                const cmdOptions = {
-                    ...options,
-                    sourceChain,
-                    messageId,
-                    sourceAddress,
-                    contractAddress,
-                    payloadHash,
-                };
-
-                const result = await isMessageApproved(config, { ...chain, name: chainName }, cmdOptions);
-                console.log(`✅ is-message-approved completed for ${chainName}\n`);
-            } catch (error) {
-                console.error(`❌ is-message-approved failed for ${chainName}: ${error.message}\n`);
-                process.exit(1);
-            }
+            const result = await isMessageApproved(config, { ...chain, name: STARKNET_CHAIN }, cmdOptions);
+            console.log(`✅ is-message-approved completed for ${STARKNET_CHAIN}\n`);
+        } catch (error) {
+            console.error(`❌ is-message-approved failed for ${STARKNET_CHAIN}: ${error.message}\n`);
+            process.exit(1);
         }
     });
 
@@ -545,27 +533,24 @@ async function main(): Promise<void> {
     isExecutedCmd.action(async (sourceChain, messageId, options) => {
         validateStarknetOptions(options.env, options.offline, options.privateKey, options.accountAddress, false);
         const config = loadConfig(options.env);
-        const chains = options.chainNames.split(',').map(name => name.trim());
+        
+        const chain = config.chains[STARKNET_CHAIN];
+        if (!chain) {
+            throw new Error(`Chain ${STARKNET_CHAIN} not found in environment ${options.env}`);
+        }
 
-        for (const chainName of chains) {
-            const chain = config.chains[chainName];
-            if (!chain) {
-                throw new Error(`Chain ${chainName} not found in environment ${options.env}`);
-            }
+        try {
+            const cmdOptions = {
+                ...options,
+                sourceChain,
+                messageId,
+            };
 
-            try {
-                const cmdOptions = {
-                    ...options,
-                    sourceChain,
-                    messageId,
-                };
-
-                const result = await isMessageExecuted(config, { ...chain, name: chainName }, cmdOptions);
-                console.log(`✅ is-message-executed completed for ${chainName}\n`);
-            } catch (error) {
-                console.error(`❌ is-message-executed failed for ${chainName}: ${error.message}\n`);
-                process.exit(1);
-            }
+            const result = await isMessageExecuted(config, { ...chain, name: STARKNET_CHAIN }, cmdOptions);
+            console.log(`✅ is-message-executed completed for ${STARKNET_CHAIN}\n`);
+        } catch (error) {
+            console.error(`❌ is-message-executed failed for ${STARKNET_CHAIN}: ${error.message}\n`);
+            process.exit(1);
         }
     });
 
@@ -579,26 +564,23 @@ async function main(): Promise<void> {
     transferOpCmd.action(async (newOperator, options) => {
         validateStarknetOptions(options.env, options.offline, options.privateKey, options.accountAddress);
         const config = loadConfig(options.env);
-        const chains = options.chainNames.split(',').map(name => name.trim());
+        
+        const chain = config.chains[STARKNET_CHAIN];
+        if (!chain) {
+            throw new Error(`Chain ${STARKNET_CHAIN} not found in environment ${options.env}`);
+        }
 
-        for (const chainName of chains) {
-            const chain = config.chains[chainName];
-            if (!chain) {
-                throw new Error(`Chain ${chainName} not found in environment ${options.env}`);
-            }
+        try {
+            const cmdOptions = {
+                ...options,
+                newOperator,
+            };
 
-            try {
-                const cmdOptions = {
-                    ...options,
-                    newOperator,
-                };
-
-                const result = await transferOperatorship(config, { ...chain, name: chainName }, cmdOptions);
-                console.log(`✅ transfer-operatorship completed for ${chainName}\n`);
-            } catch (error) {
-                console.error(`❌ transfer-operatorship failed for ${chainName}: ${error.message}\n`);
-                process.exit(1);
-            }
+            const result = await transferOperatorship(config, { ...chain, name: STARKNET_CHAIN }, cmdOptions);
+            console.log(`✅ transfer-operatorship completed for ${STARKNET_CHAIN}\n`);
+        } catch (error) {
+            console.error(`❌ transfer-operatorship failed for ${STARKNET_CHAIN}: ${error.message}\n`);
+            process.exit(1);
         }
     });
 
@@ -611,21 +593,18 @@ async function main(): Promise<void> {
     getOperatorCmd.action(async (options) => {
         validateStarknetOptions(options.env, options.offline, options.privateKey, options.accountAddress, false);
         const config = loadConfig(options.env);
-        const chains = options.chainNames.split(',').map(name => name.trim());
+        
+        const chain = config.chains[STARKNET_CHAIN];
+        if (!chain) {
+            throw new Error(`Chain ${STARKNET_CHAIN} not found in environment ${options.env}`);
+        }
 
-        for (const chainName of chains) {
-            const chain = config.chains[chainName];
-            if (!chain) {
-                throw new Error(`Chain ${chainName} not found in environment ${options.env}`);
-            }
-
-            try {
-                const result = await getOperator(config, { ...chain, name: chainName }, options);
-                console.log(`✅ get-operator completed for ${chainName}\n`);
-            } catch (error) {
-                console.error(`❌ get-operator failed for ${chainName}: ${error.message}\n`);
-                process.exit(1);
-            }
+        try {
+            const result = await getOperator(config, { ...chain, name: STARKNET_CHAIN }, options);
+            console.log(`✅ get-operator completed for ${STARKNET_CHAIN}\n`);
+        } catch (error) {
+            console.error(`❌ get-operator failed for ${STARKNET_CHAIN}: ${error.message}\n`);
+            process.exit(1);
         }
     });
 
@@ -638,22 +617,18 @@ async function main(): Promise<void> {
     getEpochCmd.action(async (options) => {
         validateStarknetOptions(options.env, options.offline, options.privateKey, options.accountAddress, false);
         const config = loadConfig(options.env);
-        const chains = options.chainNames.split(',').map(name => name.trim());
+        
+        const chain = config.chains[STARKNET_CHAIN];
+        if (!chain) {
+            throw new Error(`Chain ${STARKNET_CHAIN} not found in environment ${options.env}`);
+        }
 
-        for (const chainName of chains) {
-            const chain = config.chains[chainName];
-            if (!chain) {
-                throw new Error(`Chain ${chainName} not found in environment ${options.env}`);
-            }
-
-
-            try {
-                const result = await getEpoch(config, { ...chain, name: chainName }, options);
-                console.log(`✅ get-epoch completed for ${chainName}\n`);
-            } catch (error) {
-                console.error(`❌ get-epoch failed for ${chainName}: ${error.message}\n`);
-                process.exit(1);
-            }
+        try {
+            const result = await getEpoch(config, { ...chain, name: STARKNET_CHAIN }, options);
+            console.log(`✅ get-epoch completed for ${STARKNET_CHAIN}\n`);
+        } catch (error) {
+            console.error(`❌ get-epoch failed for ${STARKNET_CHAIN}: ${error.message}\n`);
+            process.exit(1);
         }
     });
 

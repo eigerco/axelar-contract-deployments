@@ -36,6 +36,7 @@
     "@ledgerhq/hw-app-starknet": "^2.5.2",
     "@mysten/ledgerjs-hw-app-sui": "^0.4.1",
     "@mysten/sui": "^1.3.0",
+    "@starknet-io/types-js": "^0.8.4",
     "@stellar/stellar-sdk": "^13.0.0",
     "axios": "^1.7.2",
     "csv-parser": "^3.0.0",
