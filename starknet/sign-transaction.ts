@@ -1,7 +1,7 @@
 'use strict';
 
 import { Command } from 'commander';
-import { hash, stark, constants, RpcProvider, Account, ec, CallData } from 'starknet';
+import { hash, stark, constants, Account, ec, CallData } from 'starknet';
 import * as fs from 'fs';
 import * as path from 'path';
 import { loadConfig } from '../common';
@@ -13,40 +13,6 @@ const STARKNET_CHAIN = 'starknet';
 import TransportNodeHid from '@ledgerhq/hw-transport-node-hid';
 import { StarknetClient } from '@ledgerhq/hw-app-starknet';
 import { UnsignedTransaction } from './types';
-
-/**
- * Compute transaction hash for Starknet v3 transaction
- */
-function computeTransactionHash(
-    transaction: UnsignedTransaction,
-    chainId: constants.StarknetChainId
-): string {
-    // For INVOKE transactions
-    if (transaction.type === 'INVOKE') {
-        const calldata = transaction.calls.flatMap(call => [
-            call.contractAddress,
-            hash.getSelectorFromName(call.entrypoint),
-            ...CallData.toCalldata(call.calldata)
-        ]);
-
-        return hash.calculateInvokeTransactionHash({
-            senderAddress: transaction.sender_address,
-            version: transaction.version as any,
-            compiledCalldata: calldata,
-            maxFee: '0x0', // v3 doesn't use maxFee
-            chainId,
-            nonce: transaction.nonce,
-            accountDeploymentData: transaction.account_deployment_data || [],
-            paymasterData: transaction.paymaster_data || [],
-            nonceDataAvailabilityMode: transaction.nonce_data_availability_mode === 'L1' ? 0 : 1,
-            feeDataAvailabilityMode: transaction.fee_data_availability_mode === 'L1' ? 0 : 1,
-            resourceBounds: transaction.resource_bounds,
-            tip: transaction.tip || '0x0',
-        });
-    }
-
-    throw new Error(`Unsupported transaction type: ${transaction.type}`);
-}
 
 /**
  * Sign transaction with Ledger
@@ -76,11 +42,6 @@ async function signWithLedger(
             console.log(`      Calldata length: ${call.calldata.length}`);
         });
     }
-
-    // Compute transaction hash
-    // console.log('\n🔐 Computing transaction hash...');
-    // const txHash = computeTransactionHash(transaction, chainId);
-    // console.log(`Transaction hash: ${txHash}`);
 
     let transport;
     let app;
