@@ -12,14 +12,39 @@ import {
     getContractConfig,
     handleOfflineTransaction,
     validateStarknetOptions,
+    estimateGasAndDisplayArgs,
 } from './utils';
-import { Contract, CallData, byteArray } from 'starknet';
+import { Contract, CallData, byteArray, Call } from 'starknet';
 import {
     Config,
     ChainConfig,
     GatewayCommandOptions,
     OfflineTransactionResult
 } from './types';
+
+/**
+ * Common function to handle gas estimation for gateway operations
+ */
+async function handleGasEstimation(
+    chain: ChainConfig & { name: string },
+    options: GatewayCommandOptions,
+    contractAddress: string,
+    entrypoint: string,
+    calldata: any[]
+): Promise<Record<string, never>> {
+    console.log(`\nEstimating gas for ${entrypoint} on ${chain.name}...`);
+    
+    const provider = getStarknetProvider(chain);
+    const account = getStarknetAccount(options.privateKey!, options.accountAddress!, provider);
+    const calls: Call[] = [{
+        contractAddress,
+        entrypoint,
+        calldata
+    }];
+
+    await estimateGasAndDisplayArgs(account, calls);
+    return {}; // Return empty for estimation
+}
 
 async function callContract(
     config: Config,
@@ -33,6 +58,7 @@ async function callContract(
         destinationContractAddress,
         payload,
         offline,
+        estimate,
     } = options;
 
     const provider = getStarknetProvider(chain);
@@ -51,6 +77,11 @@ async function callContract(
         byteArray.byteArrayFromString(destinationContractAddress),
         byteArray.byteArrayFromString(payload),
     ]);
+
+    // Handle estimate mode
+    if (estimate) {
+        return handleGasEstimation(chain, options, gatewayConfig.address, 'call_contract', calldata);
+    }
 
     if (offline) {
         return handleOfflineTransaction(options, chain.name, gatewayConfig.address, 'call_contract', calldata, 'call_contract');
@@ -84,6 +115,7 @@ async function approveMessages(
         messages,
         proof,
         offline,
+        estimate,
     } = options;
 
     const gatewayConfig = getContractConfig(config, chain.name, 'AxelarGateway');
@@ -97,6 +129,11 @@ async function approveMessages(
         messages, // Array<Message>
         proof, // Proof
     ]);
+
+    // Handle estimate mode
+    if (estimate) {
+        return handleGasEstimation(chain, options, gatewayConfig.address, 'approve_messages', calldata);
+    }
 
     if (offline) {
         return handleOfflineTransaction(options, chain.name, gatewayConfig.address, 'approve_messages', calldata, 'approve_messages');
@@ -133,6 +170,7 @@ async function validateMessage(
         sourceAddress,
         payloadHash,
         offline,
+        estimate,
     } = options;
 
     const gatewayConfig = getContractConfig(config, chain.name, 'AxelarGateway');
@@ -151,6 +189,11 @@ async function validateMessage(
         byteArray.byteArrayFromString(sourceAddress),
         payloadHash, // u256
     ]);
+
+    // Handle estimate mode
+    if (estimate) {
+        return handleGasEstimation(chain, options, gatewayConfig.address, 'validate_message', calldata);
+    }
 
     if (offline) {
         return handleOfflineTransaction(options, chain.name, gatewayConfig.address, 'validate_message', calldata, 'validate_message');
@@ -181,6 +224,7 @@ async function rotateSigners(config, chain, options) {
         newSigners,
         proof,
         offline,
+        estimate,
     } = options;
 
     const gatewayConfig = getContractConfig(config, chain.name, 'AxelarGateway');
@@ -195,6 +239,11 @@ async function rotateSigners(config, chain, options) {
         newSigners, // WeightedSigners
         proof, // Proof
     ]);
+
+    // Handle estimate mode
+    if (estimate) {
+        return handleGasEstimation(chain, options, gatewayConfig.address, 'rotate_signers', calldata);
+    }
 
     if (offline) {
         return handleOfflineTransaction(options, chain.name, gatewayConfig.address, 'rotate_signers', calldata, 'rotate_signers');
@@ -276,6 +325,7 @@ async function transferOperatorship(config, chain, options) {
         accountAddress,
         newOperator,
         offline,
+        estimate,
     } = options;
 
     const gatewayConfig = getContractConfig(config, chain.name, 'AxelarGateway');
@@ -286,6 +336,11 @@ async function transferOperatorship(config, chain, options) {
     console.log(`Transferring operatorship to: ${newOperator}`);
 
     const calldata = CallData.compile([newOperator]);
+
+    // Handle estimate mode
+    if (estimate) {
+        return handleGasEstimation(chain, options, gatewayConfig.address, 'transfer_operatorship', calldata);
+    }
 
     if (offline) {
         return handleOfflineTransaction(options, chain.name, gatewayConfig.address, 'transfer_operatorship', calldata, 'transfer_operatorship');
