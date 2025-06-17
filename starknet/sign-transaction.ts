@@ -93,9 +93,9 @@ async function signWithLedger(
             }
 
             // Convert to hex strings with 0x prefix
-            const h = '0x' + signature.h.toString('hex');
-            const r = '0x' + signature.r.toString('hex');
-            const s = '0x' + signature.s.toString('hex');
+            const h = `0x${signature.h.toString('hex')}`;
+            const r = `0x${signature.r.toString('hex')}`;
+            const s = `0x${signature.s.toString('hex')}`;
 
             signatureArray = [r, s];
             console.log(`\n📝 Signature:`);
