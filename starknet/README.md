@@ -212,11 +212,15 @@ If using multisig accounts, combine all signatures:
 
 ```bash
 npx ts-node starknet/combine-signatures.ts \
-  starknet-offline-txs/deploy_AxelarGateway_starknet_2025-06-12T10-30-45-123Z.json \
   starknet-offline-txs/deploy_AxelarGateway_starknet_2025-06-12T10-30-45-123Z_signed.json \
-  starknet-offline-txs/deploy_AxelarGateway_starknet_another_signer_signed.json \
-  --signers 0x123... 0x456... \
-  --output combined_transaction.json
+  starknet-offline-txs/deploy_AxelarGateway_starknet_another_signer_signed.json
+# Creates: starknet-offline-txs/tx_multisig_signed_2025-06-12T10-35-22-789Z.json
+
+# Or with custom output filename
+npx ts-node starknet/combine-signatures.ts \
+  signer1_signed.json \
+  signer2_signed.json \
+  -o custom_multisig.json
 ```
 
 ### Step 5: Broadcast Transaction (Online Environment)
@@ -231,7 +235,7 @@ npx ts-node starknet/broadcast-transaction.ts \
 
 # For multisig accounts
 npx ts-node starknet/broadcast-transaction.ts \
-  combined_transaction.json \
+  starknet-offline-txs/tx_multisig_signed_2025-06-12T10-35-22-789Z.json \
   --env mainnet \
   --contract-config-name AxelarGateway
 ```
@@ -288,8 +292,7 @@ Contracts are managed through configuration names stored in the chain config. Ea
 - `--env`: Environment for chain ID detection
 
 *combine-signatures.ts:*
-- `--signers`: Array of signer addresses corresponding to signature files
-- `--output`: Output file for combined transaction
+- `--output`: Output file for combined transaction (default: starknet-offline-txs/tx_multisig_signed_<timestamp>.json)
 
 *broadcast-transaction.ts:*
 - `--env`: Environment configuration
