@@ -125,22 +125,29 @@
       "finality": "finalized",
       "approxFinalityWaitTime": 40
     },
-    "starknet-sepolia": {
+    "starknet": {
       "name": "Starknet-Sepolia",
       "axelarId": "starknet-devnet-v1",
       "rpc": "https://starknet-sepolia.public.blastapi.io/rpc/v0_7",
       "tokenSymbol": "STRK",
-      "chainType": "starknet",
       "decimals": 18,
       "universalDeployerAddress": "0x041a78e741e5af2fec34b695679bc6891742439f7afb8484ecd7766661ad02bf",
       "contracts": {
         "AxelarGateway": {
           "deployer": "0x0282b4492e08d8b6bbec8dfe7412e42e897eef9c080c5b97be1537433e583bdc",
-          "address": "0x66a1db5348892a67d4dc482f95c6722e39307623df369470034820a00fa88a8",
+          "address": "0x3d602ae73d488eb4b40d83dc82f03d7c8e63c1b68ed000e767a59871b95a4cd",
           "classHash": "0x007eb89b57c847f1c3dff2799ecd02c12507967c2e4da6cf32bbf9d7c396429a",
-          "deploymentTransactionHash": "0x5e0777741150011d52e851dcc94b1d8174fab1e38b66a1909c9be533e0e8f28",
-          "salt": "0x0",
-          "deployedAt": "2025-06-05T15:43:19.429Z"
+          "deploymentTransactionHash": "0x79efad7b2df0679da65c24c766b04877dc37b52c442e974a787d14123298081",
+          "salt": "0",
+          "deployedAt": "2025-06-10T12:54:01.728Z"
+        },
+        "AxelarGasService": {
+          "classHash": "0x25ce335859ad3a17fa1e79d80500a36d0517e76dfe8a84f6caff6154b180ab5",
+          "deployedAt": "2025-06-10T14:08:28.645Z",
+          "address": "0x718840ec2ca5a63965eb522ccfbefb6b14809b24fb5c0d42a99f169a1c3f3df",
+          "deploymentTransactionHash": "0x50277933bdc02f2150cdfbacc5eff3f60fd9c6db3f66913a8e5ad00eb135b59",
+          "deployer": "0x0282b4492e08d8b6bbec8dfe7412e42e897eef9c080c5b97be1537433e583bdc",
+          "salt": "0"
         }
       },
       "explorer": {
