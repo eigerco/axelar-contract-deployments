@@ -3,6 +3,9 @@
 import { Command } from 'commander';
 import { loadConfig, saveConfig, prompt } from '../common';
 import { addStarknetOptions } from './cli-utils';
+
+// Constant for Starknet chain name in config
+const STARKNET_CHAIN = 'starknet';
 import {
     upgradeContract,
     getContractConfig,
@@ -10,7 +13,8 @@ import {
     handleOfflineTransaction,
     validateStarknetOptions,
     getStarknetAccount,
-    getStarknetProvider
+    getStarknetProvider,
+    estimateGasAndDisplayArgs
 } from './utils';
 import { CallData } from 'starknet';
 import {
@@ -34,6 +38,7 @@ async function processCommand(
         yes,
         offline,
         env,
+        estimate,
     } = options;
 
     // Validate execution options
@@ -49,17 +54,36 @@ async function processCommand(
         throw new Error('Class hash required for upgrade. Provide --classHash.');
     }
 
+    // Prepare upgrade calldata
+    const upgradeCalldata = CallData.compile([classHash]);
+
+    // Handle estimate mode
+    if (estimate) {
+        console.log(`\nEstimating gas for upgrading ${contractConfigName} on ${chain.name}...`);
+        
+        // Initialize provider and account for estimation
+        const provider = getStarknetProvider(chain);
+        const account = getStarknetAccount(privateKey!, accountAddress!, provider);
+        
+        const calls = [{
+            contractAddress: targetAddress,
+            entrypoint: 'upgrade',
+            calldata: upgradeCalldata
+        }];
+
+        // Estimate gas and display CLI args
+        await estimateGasAndDisplayArgs(account, calls);
+        
+        return config; // No config changes for estimation
+    }
+
     // Handle offline mode
     if (offline) {
         console.log(`\nGenerating unsigned transaction for upgrading ${contractConfigName} on ${chain.name}...`);
 
-        // Prepare upgrade call
-        const entrypoint = 'upgrade';
-        const calldata = CallData.compile([classHash]);
-
         // Use common offline transaction handler
         const operationName = `upgrade_${contractConfigName}`;
-        return handleOfflineTransaction(options, chain.name, targetAddress, entrypoint, calldata, operationName);
+        return handleOfflineTransaction(options, chain.name, targetAddress, 'upgrade', upgradeCalldata, operationName);
     }
 
     console.log(`\nUpgrading ${contractConfigName} on ${chain.name}...`);
@@ -115,18 +139,17 @@ async function main(): Promise<void> {
     validateStarknetOptions(env, options.offline, options.privateKey, options.accountAddress);
 
     const config = loadConfig(env);
-    const chainName = 'starknet';
-    const chain = config.chains[chainName];
+    const chain = config.chains[STARKNET_CHAIN];
 
     if (!chain) {
-        throw new Error(`Chain ${chainName} not found in environment ${env}`);
+        throw new Error(`Chain ${STARKNET_CHAIN} not found in environment ${env}`);
     }
 
     try {
-        await processCommand(config, { ...chain, name: chainName }, options);
-        console.log(`✅ Upgrade completed for ${chainName}\n`);
+        await processCommand(config, { ...chain, name: STARKNET_CHAIN }, options);
+        console.log(`✅ Upgrade completed for ${STARKNET_CHAIN}\n`);
     } catch (error) {
-        console.error(`❌ Upgrade failed for ${chainName}: ${error.message}\n`);
+        console.error(`❌ Upgrade failed for ${STARKNET_CHAIN}: ${error.message}\n`);
         process.exit(1);
     }
 

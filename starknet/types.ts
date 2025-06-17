@@ -4,24 +4,8 @@ import {
     CompiledContract,
     Call
 } from 'starknet';
+import { ResourceBounds } from '@starknet-io/types-js';
 
-/**
- * Resource bounds for Starknet transactions (L1 and L2 gas limits)
- */
-export interface ResourceBounds {
-    l1_gas: {
-        max_amount: string;
-        max_price_per_unit: string;
-    };
-    l2_gas: {
-        max_amount: string;
-        max_price_per_unit: string;
-    };
-    l1_data: {
-        max_amount: string;
-        max_price_per_unit: string;
-    };
-}
 
 /**
  * Configuration for a blockchain network chain
@@ -146,14 +130,7 @@ interface BaseUnsignedTransaction {
 export interface UnsignedInvokeTransaction extends BaseUnsignedTransaction {
     type: 'INVOKE';
     /** Array of contract calls to execute */
-    calls: Array<{
-        /** Target contract address */
-        contract_address: string;
-        /** Function to call on the contract */
-        entry_point: string;
-        /** Encoded function arguments */
-        calldata: string[];
-    }>;
+    calls: Array<Call>;
     /** Data for account deployment (if applicable) */
     account_deployment_data: any[];
 }
@@ -171,8 +148,9 @@ export interface UnsignedDeclareTransaction extends BaseUnsignedTransaction {
 
 /**
  * Union type for all unsigned transactions
+ * Note: Only invoke transactions are supported offline since declarations are done online only
  */
-export type UnsignedTransaction = UnsignedInvokeTransaction | UnsignedDeclareTransaction;
+export type UnsignedTransaction = UnsignedInvokeTransaction;
 
 /**
  * Options for generating unsigned transactions
@@ -230,8 +208,6 @@ export interface OfflineTransactionResult {
 export interface BaseCommandOptions {
     /** Environment name (mainnet, testnet, devnet, stagenet) */
     env: string;
-    /** Comma-separated list of chain names to operate on */
-    chainNames: string;
     /** Skip confirmation prompts */
     yes?: boolean;
 }
@@ -247,6 +223,8 @@ export interface StarknetCommandOptions extends BaseCommandOptions, OfflineTrans
     ignorePrivateKey?: boolean;
     /** Whether to ignore account address requirement */
     ignoreAccountAddress?: boolean;
+    /** Whether to estimate gas for the transaction */
+    estimate?: boolean;
 }
 
 /**

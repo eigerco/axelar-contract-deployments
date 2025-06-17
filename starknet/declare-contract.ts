@@ -3,6 +3,9 @@
 import { Command } from 'commander';
 import { loadConfig, saveConfig, prompt } from '../common';
 import { addStarknetOptions } from './cli-utils';
+
+// Constant for Starknet chain name in config
+const STARKNET_CHAIN = 'starknet';
 import {
     declareContract,
     saveContractConfig,
@@ -53,7 +56,7 @@ async function processCommand(
 
     // Load CASM if it exists
     let casmArtifact;
-    let casmPath = contractPath.replace('.contract_class.json', '.compiled_contract_class.json');
+    const casmPath = contractPath.replace('.contract_class.json', '.compiled_contract_class.json');
     try {
         const casmData = readFileSync(casmPath, 'utf8');
         casmArtifact = JSON.parse(casmData) as CompiledContract;
@@ -112,18 +115,17 @@ async function main(): Promise<void> {
     validateStarknetOptions(env, false, options.privateKey, options.accountAddress);
 
     const config = loadConfig(env);
-    const chainName = 'starknet';
-    const chain = config.chains[chainName];
+    const chain = config.chains[STARKNET_CHAIN];
     
     if (!chain) {
-        throw new Error(`Chain ${chainName} not found in environment ${env}`);
+        throw new Error(`Chain ${STARKNET_CHAIN} not found in environment ${env}`);
     }
 
     try {
-        await processCommand(config, { ...chain, name: chainName }, options);
-        console.log(`✅ Declaration completed for ${chainName}\n`);
+        await processCommand(config, { ...chain, name: STARKNET_CHAIN }, options);
+        console.log(`✅ Declaration completed for ${STARKNET_CHAIN}\n`);
     } catch (error) {
-        console.error(`❌ Declaration failed for ${chainName}: ${error.message}\n`);
+        console.error(`❌ Declaration failed for ${STARKNET_CHAIN}: ${error.message}\n`);
         process.exit(1);
     }
 
