@@ -26,8 +26,16 @@ function loadTransaction(filepath: string): SignedTransaction {
     }
 
     // Validate that signature exists and is valid
-    if (!transaction.signature || !Array.isArray(transaction.signature) || transaction.signature.length !== 2) {
-        throw new Error(`Transaction file ${filepath} does not contain a valid signature. Expected array with 2 elements [r, s].`);
+    if (!transaction.signature || !Array.isArray(transaction.signature)) {
+        throw new Error(`Transaction file ${filepath} does not contain a valid signature array.`);
+    }
+    
+    // Check signature format - either [r, s] for non-multisig or [pubkey, r, s] for multisig
+    if (transaction.signature.length === 2) {
+        // Non-multisig format - not supported in combine-signatures
+        throw new Error(`Transaction file ${filepath} contains a non-multisig signature [r, s]. Please sign with --multisig flag.`);
+    } else if (transaction.signature.length !== 3) {
+        throw new Error(`Transaction file ${filepath} contains invalid signature format. Expected 3 elements [pubkey, r, s] for multisig.`);
     }
 
     return transaction;
@@ -95,23 +103,16 @@ function combineSignatures(
     console.log('\n📝 Extracting signatures...');
     const signatures: string[] = [];
 
-    transactions.forEach(({ file, tx }, index) => {
-        console.log(`  ${index + 1}. ${file}`);
-        console.log(`     r: ${tx.signature[0].slice(0, 10)}...`);
-        console.log(`     s: ${tx.signature[1].slice(0, 10)}...`);
+    transactions.forEach(({ file, tx }) => {
         signatures.push(...tx.signature);
     });
 
-    // Create Argent multisig format: [signature_count, sig1_r, sig1_s, sig2_r, sig2_s, ...]
-    const signatureCount = transactions.length;
-    const multisigSignature = [
-        `0x${signatureCount.toString(16)}`,
-        ...signatures
-    ];
+    // Create Argent multisig format: [pubkey1, sig1_r, sig1_s, pubkey2, sig2_r, sig2_s, ...]
+    const multisigSignature = [...signatures];
 
     console.log(`\n📊 Combined signature format:`);
-    console.log(`  Signature count: ${signatureCount}`);
-    console.log(`  Total elements: ${multisigSignature.length} (1 count + ${signatures.length} signature components)`);
+    console.log(`  Signature count: ${transactions.length}`);
+    console.log(`  Total elements: ${multisigSignature.length} (${transactions.length} signatures × 3 elements each)`);
 
     // Create output transaction
     const outputTransaction = {
@@ -143,7 +144,7 @@ async function main(): Promise<void> {
         .name('combine-signatures')
         .description('Combine multiple signatures into Starknet Argent multisig format')
         .version('1.0.0')
-        .argument('<signatureFiles...>', 'signed transaction files to combine (at least 2 required)')
+        .argument('<signatureFiles...>', 'signed transaction files to combine')
         .option('-o, --output <file>', 'output file path (default: starknet-offline-txs/tx_multisig_signed_<timestamp>.json)')
         .parse();
 

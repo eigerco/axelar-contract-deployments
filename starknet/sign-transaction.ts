@@ -1,7 +1,7 @@
 'use strict';
 
 import { Command } from 'commander';
-import { hash, stark, constants, Account, ec, CallData } from 'starknet';
+import { hash, stark, constants, Account, ec, CallData, encode } from 'starknet';
 import * as fs from 'fs';
 import * as path from 'path';
 import { loadConfig } from '../common';
@@ -20,7 +20,8 @@ import { UnsignedTransaction } from './types';
 async function signWithLedger(
     transactionFile: string,
     ledgerPath: string,
-    chainId: constants.StarknetChainId
+    chainId: constants.StarknetChainId,
+    multisig: boolean
 ): Promise<void> {
     console.log('📱 Initializing Ledger connection...');
 
@@ -58,8 +59,9 @@ async function signWithLedger(
 
         // Get public key for verification
         console.log(`\n🔑 Using derivation path: ${ledgerPath}`);
-        const pubKey = await app.getPubKey(ledgerPath);
-        console.log(`Public key: 0x${Buffer.from(pubKey.publicKey).toString('hex')}`);
+        const { starkKey } = await app.getStarkKey(ledgerPath, false);
+        const publicKeyHex = encode.addHexPrefix(encode.buf2hex(starkKey));
+        console.log(`Public key: ${publicKeyHex}`);
 
         // Sign the transaction hash
         console.log('\n✍️  Please review and sign the transaction on your Ledger device...');
@@ -97,11 +99,21 @@ async function signWithLedger(
             const r = `0x${signature.r.toString('hex')}`;
             const s = `0x${signature.s.toString('hex')}`;
 
-            signatureArray = [r, s];
-            console.log(`\n📝 Signature:`);
-            console.log(`  TX Hash: ${h}`);
-            console.log(`  R: ${r}`);
-            console.log(`  S: ${s}`);
+            if (multisig) {
+                // For multisig accounts, include public key in signature
+                signatureArray = [publicKeyHex, r, s];
+                console.log(`\n📝 Signature (Multisig format):`);
+                console.log(`  Public Key: ${publicKeyHex}`);
+                console.log(`  R: ${r}`);
+                console.log(`  S: ${s}`);
+            } else {
+                // For single-signature accounts
+                signatureArray = [r, s];
+                console.log(`\n📝 Signature:`);
+                console.log(`  TX Hash: ${h}`);
+                console.log(`  R: ${r}`);
+                console.log(`  S: ${s}`);
+            }
         } else {
             throw new Error(`Unexpected signature format: ${JSON.stringify(signature)}`);
         }
@@ -120,8 +132,12 @@ async function signWithLedger(
         console.log(`\n💾 Signed transaction saved to: ${signedFile}`);
 
         console.log('\n📋 Next steps:');
-        console.log('1. For single-signature accounts: Use broadcast-transaction.ts to submit');
-        console.log('2. For multisig accounts: Collect more signatures with combine-signatures.ts');
+        if (multisig) {
+            console.log('1. If more signatures needed: Use combine-signatures.ts to combine with other signers');
+            console.log('2. If threshold met: Use broadcast-transaction.ts to submit the transaction');
+        } else {
+            console.log('Use broadcast-transaction.ts to submit the signed transaction');
+        }
 
     } catch (error: any) {
         if (error.message?.includes('0x6985')) {
@@ -149,6 +165,7 @@ async function main(): Promise<void> {
         .argument('<transactionFile>', 'path to unsigned transaction JSON file')
         .option('-p, --ledger-path <path>', 'Ledger derivation path', "m/44'/9004'/0'/0/0")
         .option('-e, --env <env>', 'environment (mainnet, testnet, devnet)', 'mainnet')
+        .option('--multisig', 'enable multisig mode (include public key in signature)', true)
         .parse();
 
     const [transactionFile] = program.args;
@@ -185,7 +202,7 @@ async function main(): Promise<void> {
     }
 
     try {
-        await signWithLedger(transactionFile, options.ledgerPath, chainId);
+        await signWithLedger(transactionFile, options.ledgerPath, chainId, options.multisig);
     } catch (error: any) {
         console.error('\n❌ Signing failed:', error.message);
         process.exit(1);

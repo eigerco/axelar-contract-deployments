@@ -290,13 +290,13 @@ Contracts are managed through configuration names stored in the chain config. Ea
 *sign-transaction.ts:*
 - `--ledger-path`: Ledger derivation path (default: "m/44'/9004'/0'/0/0")
 - `--env`: Environment for chain ID detection
+- `--multisig`: Enable multisig mode - includes public key in signature (default: true)
 
 *combine-signatures.ts:*
 - `--output`: Output file for combined transaction (default: starknet-offline-txs/tx_multisig_signed_<timestamp>.json)
 
 *broadcast-transaction.ts:*
 - `--env`: Environment configuration
-- `--skip-wait`: Skip waiting for transaction confirmation
 - `--contract-config-name`: Contract config name (for deployment transactions)
 
 ## 📚 Documentation
