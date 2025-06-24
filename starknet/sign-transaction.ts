@@ -1,7 +1,7 @@
 'use strict';
 
 import { Command } from 'commander';
-import { hash, stark, constants, Account, ec, CallData, encode } from 'starknet';
+import { hash, stark, constants, encode, ETransactionVersion3, EDataAvailabilityMode, Calldata } from 'starknet';
 import * as fs from 'fs';
 import * as path from 'path';
 import { loadConfig } from '../common';
@@ -35,13 +35,8 @@ async function signWithLedger(
     console.log(`  Nonce: ${transaction.nonce}`);
 
     if (transaction.type === 'INVOKE') {
-        console.log(`  Calls: ${transaction.calls.length}`);
-        transaction.calls.forEach((call, i) => {
-            console.log(`    Call ${i + 1}:`);
-            console.log(`      Contract: ${call.contractAddress}`);
-            console.log(`      Entrypoint: ${call.entrypoint}`);
-            console.log(`      Calldata length: ${call.calldata.length}`);
-        });
+        console.log(`  Calldata length: ${transaction.calldata.length}`);
+        // console.log(`  Calldata: ${transaction.calldata.slice(0, 10).join(', ')}${transaction.calldata.length > 10 ? '...' : ''}`);
     }
 
     let transport;
@@ -67,16 +62,35 @@ async function signWithLedger(
         console.log('\n✍️  Please review and sign the transaction on your Ledger device...');
         console.log('⚠️  Note: You will see the transaction hash on your device screen.');
 
-        const signature = await app.signTx(ledgerPath, transaction.calls,
-            {
-                accountAddress: transaction.sender_address,
-                tip: transaction.tip,
-                resourceBounds: transaction.resource_bounds,
-                chainId: chainId,
-                nonce: transaction.nonce, // TODO: Set correct one by querying contract. Will it work if a lot of calls are made to the contract?
-                nonceDataAvailabilityMode: transaction.nonce_data_availability_mode,
-                feeDataAvailabilityMode: transaction.fee_data_availability_mode,
-            });
+        // Use the stored original entrypoint name and contract address for Ledger signing
+        if (!transaction.entrypoint_name || !transaction.contract_address) {
+            throw new Error('Transaction missing original entrypoint_name or contract_address required for Ledger signing');
+        }
+
+        const reconstructedCall = {
+            contractAddress: transaction.contract_address,
+            entrypoint: transaction.entrypoint_name,
+            calldata: transaction.calldata
+        };
+
+        // Calculate and log the transaction hash for debugging
+        const txHash = hash.calculateInvokeTransactionHash({
+            senderAddress: transaction.sender_address,
+            version: ETransactionVersion3.V3,
+            compiledCalldata: transaction.calldata as Calldata,
+            chainId: chainId,
+            nonce: transaction.nonce,
+            resourceBounds: transaction.resource_bounds,
+            tip: transaction.tip,
+            paymasterData: transaction.paymaster_data,
+            accountDeploymentData: transaction.account_deployment_data,
+            nonceDataAvailabilityMode: stark.intDAM(transaction.nonce_data_availability_mode as EDataAvailabilityMode),
+            feeDataAvailabilityMode: stark.intDAM(transaction.fee_data_availability_mode as EDataAvailabilityMode),
+        });
+
+        console.log(`\n🔍 Transaction hash to be signed: ${txHash}`);
+
+        const signature = await app.signHash(ledgerPath, txHash);
 
         // Check if signature contains an error
         if (signature.errorMessage && signature.returnCode !== 36864 && signature.errorMessage !== "No error") {
@@ -88,31 +102,38 @@ async function signWithLedger(
         // Create signed transaction object
         // Handle different signature formats from Ledger
         let signatureArray: string[];
-        if (signature.r && signature.s && signature.h) {
+        if (signature.r && signature.s) {
             // Convert Buffer byte arrays to hex strings (field elements)
-            if (!Buffer.isBuffer(signature.h) || !Buffer.isBuffer(signature.s) || !Buffer.isBuffer(signature.r)) {
-                throw new Error('Unexpected signature format - H, S or R are not buffers');
+            let r: string, s: string;
+
+            // Handle both Buffer and direct data array formats
+            if (Buffer.isBuffer(signature.r) && Buffer.isBuffer(signature.s)) {
+                r = `0x${signature.r.toString('hex')}`;
+                s = `0x${signature.s.toString('hex')}`;
+            } else if (signature.r.data && signature.s.data) {
+                // Handle the format {"type":"Buffer","data":[...]}
+                r = `0x${Buffer.from(signature.r.data).toString('hex')}`;
+                s = `0x${Buffer.from(signature.s.data).toString('hex')}`;
+            } else {
+                throw new Error('Unexpected signature format - R and S are not in expected format');
             }
 
-            // Convert to hex strings with 0x prefix
-            const h = `0x${signature.h.toString('hex')}`;
-            const r = `0x${signature.r.toString('hex')}`;
-            const s = `0x${signature.s.toString('hex')}`;
+            // Ensure consistent formatting using stark.signatureToHexArray
+            const formattedSignature = stark.signatureToHexArray([r, s]);
 
             if (multisig) {
                 // For multisig accounts, include public key in signature
-                signatureArray = [publicKeyHex, r, s];
+                signatureArray = ['1', '0', publicKeyHex, ...formattedSignature];
                 console.log(`\n📝 Signature (Multisig format):`);
                 console.log(`  Public Key: ${publicKeyHex}`);
-                console.log(`  R: ${r}`);
-                console.log(`  S: ${s}`);
+                console.log(`  R: ${formattedSignature[0]}`);
+                console.log(`  S: ${formattedSignature[1]}`);
             } else {
                 // For single-signature accounts
-                signatureArray = [r, s];
+                signatureArray = formattedSignature;
                 console.log(`\n📝 Signature:`);
-                console.log(`  TX Hash: ${h}`);
-                console.log(`  R: ${r}`);
-                console.log(`  S: ${s}`);
+                console.log(`  R: ${formattedSignature[0]}`);
+                console.log(`  S: ${formattedSignature[1]}`);
             }
         } else {
             throw new Error(`Unexpected signature format: ${JSON.stringify(signature)}`);

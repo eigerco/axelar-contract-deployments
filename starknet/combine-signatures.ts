@@ -58,9 +58,9 @@ function compareTransactions(tx1: SignedTransaction, tx2: SignedTransaction, fil
         }
     }
 
-    // Deep compare calls
-    if (JSON.stringify(tx1.calls) !== JSON.stringify(tx2.calls)) {
-        throw new Error(`Transaction calls mismatch between ${file1} and ${file2}`);
+    // Deep compare calldata
+    if (JSON.stringify(tx1.calldata) !== JSON.stringify(tx2.calldata)) {
+        throw new Error(`Transaction calldata mismatch between ${file1} and ${file2}`);
     }
 }
 
@@ -153,8 +153,8 @@ async function main(): Promise<void> {
 
     try {
         combineSignatures(signatureFiles, options.output);
-    } catch (error: any) {
-        console.error('\n❌ Failed to combine signatures:', error.message);
+    } catch (error) {
+        console.error('\n❌ Failed to combine signatures:', error instanceof Error ? error.message : String(error));
         process.exit(1);
     }
 }

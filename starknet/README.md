@@ -328,6 +328,24 @@ Contracts are managed through configuration names stored in the chain config. Ea
 
 Add `--verbose` flag to any command for detailed logging.
 
+### Argent Multisig Debugging
+
+**Debug signer registration:**
+```bash
+npx ts-node starknet/debug-multisig-signer.ts \
+  YOUR_MULTISIG_ADDRESS \
+  YOUR_PUBLIC_KEY \
+  --env testnet
+```
+
+**Format constructor for deployment:**
+```bash
+npx ts-node starknet/format-multisig-constructor.ts \
+  1 \
+  0x1234...pubkey1 \
+  0x5678...pubkey2
+```
+
 ## 📚 Additional Resources
 
 - [Starknet Official Documentation](https://docs.starknet.io/)

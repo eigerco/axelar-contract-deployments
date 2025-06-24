@@ -2,7 +2,9 @@
 
 import {
     CompiledContract,
-    Call
+    Call,
+    Calldata,
+    RawArgs
 } from 'starknet';
 import { ResourceBounds } from '@starknet-io/types-js';
 
@@ -129,10 +131,14 @@ interface BaseUnsignedTransaction {
  */
 export interface UnsignedInvokeTransaction extends BaseUnsignedTransaction {
     type: 'INVOKE';
-    /** Array of contract calls to execute */
-    calls: Array<Call>;
+    /** Calldata array for the account's execute function */
+    calldata: RawArgs | Calldata;
     /** Data for account deployment (if applicable) */
     account_deployment_data: any[];
+    /** Original entrypoint name for Ledger signing (not included in final transaction) */
+    entrypoint_name?: string;
+    /** Original contract address for Ledger signing (not included in final transaction) */
+    contract_address?: string;
 }
 
 /**

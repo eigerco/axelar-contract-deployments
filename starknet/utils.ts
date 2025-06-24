@@ -16,6 +16,7 @@ import {
     UniversalDetails,
     InvokeTransactionReceiptResponse,
     EstimateFeeResponse,
+    hash,
 } from 'starknet';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -100,7 +101,7 @@ export const upgradeContract = async (
             calldata: CallData.compile([newClassHash])
         };
 
-        const response = await account.execute(upgradeCall, undefined, {
+        const response = await account.execute(upgradeCall, {
             version: '0x3'
         } as UniversalDetails);
         await account.waitForTransaction(response.transaction_hash);
@@ -194,6 +195,7 @@ export const feltToString = (felt: string): string => {
 
 /**
  * Generate unsigned invoke transaction for offline signing
+ * Note: Only supports single call transactions (no multicall)
  */
 export const generateUnsignedInvokeTransaction = (
     account: Account | string,
@@ -206,17 +208,37 @@ export const generateUnsignedInvokeTransaction = (
             throw new Error('Nonce is required for offline transaction generation');
         }
 
+        // Only support single call transactions for now
+        if (calls.length !== 1) {
+            throw new Error('Only single call transactions are supported. Multicall is not supported in offline mode.');
+        }
+
         const accountAddress = typeof account === 'string' ? account : account.address;
+        const call = calls[0];
+
+        // Compile calldata for the single call
+        const compiledCalldata = Array.isArray(call.calldata)
+            ? call.calldata.map(String)
+            : CallData.compile(call.calldata);
+
+        // Convert entrypoint string to felt (hash)
+        const entrypointFelt = hash.getSelectorFromName(call.entrypoint);
+
+        // Create calldata for account's __execute__ function
+        // Format: [call_array_len, to, selector, data_offset, data_len, calldata...]
+        const calldata = [
+            '1', // call_array_len (single call)
+            call.contractAddress,
+            entrypointFelt,
+            compiledCalldata.length.toString(),
+            ...compiledCalldata
+        ];
 
         const unsignedTx: UnsignedInvokeTransaction = {
             type: 'INVOKE',
             version: constants.TRANSACTION_VERSION.V3,
             sender_address: accountAddress,
-            calls: calls.map(call => ({
-                contractAddress: call.contractAddress,
-                entrypoint: call.entrypoint,
-                calldata: Array.isArray(call.calldata) ? call.calldata.map(String) : CallData.compile(call.calldata)
-            })),
+            calldata,
             nonce,
             resource_bounds: resourceBounds,
             tip: '0x0',
@@ -225,6 +247,9 @@ export const generateUnsignedInvokeTransaction = (
             nonce_data_availability_mode: 'L1',
             fee_data_availability_mode: 'L1',
             timestamp: Date.now(),
+            // Store original values for Ledger signing
+            entrypoint_name: call.entrypoint,
+            contract_address: call.contractAddress,
         };
 
         return unsignedTx;
@@ -391,22 +416,27 @@ export const estimateGasAndDisplayArgs = async (
         // Extract resource limits from estimation
         const l1GasAmount = Math.ceil(Number(estimation.resourceBounds.l1_gas.max_amount) * buffer);
         const l1GasPrice = Number(estimation.resourceBounds.l1_gas.max_price_per_unit);
+        const l1DataGasAmount = Math.ceil(Number(estimation.resourceBounds.l1_data_gas?.max_amount || '0') * buffer);
+        const l1DataGasPrice = Number(estimation.resourceBounds.l1_data_gas?.max_price_per_unit || '0');
         const l2GasAmount = Math.ceil(Number(estimation.resourceBounds.l2_gas.max_amount) * buffer);
         const l2GasPrice = Number(estimation.resourceBounds.l2_gas.max_price_per_unit);
 
         console.log('\n✅ Gas estimation complete!');
         console.log('\nEstimated resource bounds:');
         console.log(`  L1 Gas: ${l1GasAmount} units @ ${l1GasPrice} wei/unit`);
+        console.log(`  L1 Data Gas: ${l1DataGasAmount} units @ ${l1DataGasPrice} wei/unit`);
         console.log(`  L2 Gas: ${l2GasAmount} units @ ${l2GasPrice} wei/unit`);
         console.log(`  Total estimated fee: ${estimation.overall_fee} wei`);
 
         console.log('\n📋 Copy these CLI arguments for offline transaction generation:');
-        console.log(`--l1GasMaxAmount ${l1GasAmount} --l1GasMaxPricePerUnit ${l1GasPrice} --l2GasMaxAmount ${l2GasAmount} --l2GasMaxPricePerUnit ${l2GasPrice}`);
+        console.log(`--l1GasMaxAmount ${l1GasAmount} --l1GasMaxPricePerUnit ${l1GasPrice} --l1DataMaxAmount ${l1DataGasAmount} --l1DataMaxPricePerUnit ${l1DataGasPrice} --l2GasMaxAmount ${l2GasAmount} --l2GasMaxPricePerUnit ${l2GasPrice}`);
 
         console.log('\n💡 Usage example:');
         console.log('npx ts-node starknet/deploy-contract.ts --offline \\');
         console.log(`  --l1GasMaxAmount ${l1GasAmount} \\`);
         console.log(`  --l1GasMaxPricePerUnit ${l1GasPrice} \\`);
+        console.log(`  --l1DataMaxAmount ${l1DataGasAmount} \\`);
+        console.log(`  --l1DataMaxPricePerUnit ${l1DataGasPrice} \\`);
         console.log(`  --l2GasMaxAmount ${l2GasAmount} \\`);
         console.log(`  --l2GasMaxPricePerUnit ${l2GasPrice} \\`);
         console.log('  [other arguments...]');
