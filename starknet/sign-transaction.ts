@@ -1,4 +1,4 @@
-'use strict';
+
 
 import { Command } from 'commander';
 import { hash, stark, constants, encode, ETransactionVersion3, EDataAvailabilityMode, Calldata } from 'starknet';

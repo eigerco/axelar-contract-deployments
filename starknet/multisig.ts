@@ -1,5 +1,3 @@
-'use strict';
-
 import { Command } from 'commander';
 import {
     CallData,
@@ -7,13 +5,7 @@ import {
     Call,
     num,
     encode,
-    cairo,
-    CairoEnum,
-    CairoOption,
-    CairoOptionVariant,
-    Account
 } from 'starknet';
-import * as fs from 'fs';
 import { loadConfig } from '../common';
 import { addStarknetOptions } from './cli-utils';
 import {
@@ -24,7 +16,6 @@ import {
     estimateGasAndDisplayArgs
 } from './utils';
 import {
-    Config,
     ChainConfig,
     StarknetCommandOptions,
     OfflineTransactionResult
@@ -34,15 +25,6 @@ import { StarknetClient } from '@ledgerhq/hw-app-starknet';
 
 // Constant for Starknet chain name in config
 const STARKNET_CHAIN = 'starknet';
-
-// Signer type enum matching the contract
-enum SignerType {
-    Starknet = 0,
-    Secp256k1 = 1,
-    Secp256r1 = 2,
-    Eip191 = 3,
-    Webauthn = 4
-}
 
 // Interface for command options
 interface MultisigCommandOptions extends StarknetCommandOptions {
@@ -59,42 +41,6 @@ interface MultisigCommandOptions extends StarknetCommandOptions {
     guardian?: string;
     selector?: string;
     calldata?: string;
-}
-
-/**
- * Verify Ledger connection and get public key
- */
-async function verifyLedgerConnection(ledgerPath: string): Promise<string> {
-    console.log('📱 Verifying Ledger connection...');
-    
-    let transport;
-    let app;
-    
-    try {
-        transport = await TransportNodeHid.create();
-        app = new StarknetClient(transport);
-        
-        const version = await app.getAppVersion();
-        console.log(`✅ Connected to Starknet app v${version.major}.${version.minor}.${version.patch}`);
-        
-        // Get public key for verification
-        const { starkKey } = await app.getStarkKey(ledgerPath, false);
-        const publicKeyHex = encode.addHexPrefix(encode.buf2hex(starkKey));
-        
-        console.log(`🔑 Public key: ${publicKeyHex}`);
-        
-        return publicKeyHex;
-        
-    } catch (error: any) {
-        if (error.message?.includes('0x6e00')) {
-            throw new Error('Starknet app not open on device');
-        }
-        throw error;
-    } finally {
-        if (transport) {
-            await transport.close();
-        }
-    }
 }
 
 /**
@@ -195,7 +141,6 @@ async function getLedgerPublicKey(ledgerPath: string): Promise<void> {
  * Get multisig threshold
  */
 async function getThreshold(
-    config: Config,
     chain: ChainConfig & { name: string },
     options: MultisigCommandOptions
 ): Promise<void> {
@@ -212,7 +157,6 @@ async function getThreshold(
  * Get multisig signers
  */
 async function getSigners(
-    config: Config,
     chain: ChainConfig & { name: string },
     options: MultisigCommandOptions
 ): Promise<void> {
@@ -233,7 +177,6 @@ async function getSigners(
  * Check if address is a signer
  */
 async function isSigner(
-    config: Config,
     chain: ChainConfig & { name: string },
     options: MultisigCommandOptions
 ): Promise<void> {
@@ -256,7 +199,6 @@ async function isSigner(
  * Change multisig threshold
  */
 async function changeThreshold(
-    config: Config,
     chain: ChainConfig & { name: string },
     options: MultisigCommandOptions
 ): Promise<any | OfflineTransactionResult> {
@@ -296,7 +238,7 @@ async function changeThreshold(
 
     // Always generate offline transaction for Ledger signing
     console.log('\n📝 Generating unsigned transaction for Ledger signing...');
-    
+
     // Set accountAddress to contractAddress since they're the same for multisig
     const offlineOptions = { ...options, accountAddress: options.contractAddress };
     return handleOfflineTransaction(offlineOptions, chain.name, calls, 'change_threshold');
@@ -306,7 +248,6 @@ async function changeThreshold(
  * Add signers to multisig
  */
 async function addSigners(
-    config: Config,
     chain: ChainConfig & { name: string },
     options: MultisigCommandOptions
 ): Promise<any | OfflineTransactionResult> {
@@ -350,7 +291,7 @@ async function addSigners(
 
     // Always generate offline transaction for Ledger signing
     console.log('\n📝 Generating unsigned transaction for Ledger signing...');
-    
+
     // Set accountAddress to contractAddress since they're the same for multisig
     const offlineOptions = { ...options, accountAddress: options.contractAddress };
     return handleOfflineTransaction(offlineOptions, chain.name, calls, 'add_signers');
@@ -360,7 +301,6 @@ async function addSigners(
  * Remove signers from multisig
  */
 async function removeSigners(
-    config: Config,
     chain: ChainConfig & { name: string },
     options: MultisigCommandOptions
 ): Promise<any | OfflineTransactionResult> {
@@ -416,7 +356,6 @@ async function removeSigners(
  * Replace signer in multisig
  */
 async function replaceSigner(
-    config: Config,
     chain: ChainConfig & { name: string },
     options: MultisigCommandOptions
 ): Promise<any | OfflineTransactionResult> {
@@ -473,7 +412,6 @@ async function replaceSigner(
  * Toggle escape (guardian recovery)
  */
 async function toggleEscape(
-    config: Config,
     chain: ChainConfig & { name: string },
     options: MultisigCommandOptions
 ): Promise<any | OfflineTransactionResult> {
@@ -537,7 +475,6 @@ async function toggleEscape(
  * Get guardian address
  */
 async function getGuardian(
-    config: Config,
     chain: ChainConfig & { name: string },
     options: MultisigCommandOptions
 ): Promise<void> {
@@ -554,7 +491,6 @@ async function getGuardian(
  * Trigger escape
  */
 async function triggerEscape(
-    config: Config,
     chain: ChainConfig & { name: string },
     options: MultisigCommandOptions
 ): Promise<any | OfflineTransactionResult> {
@@ -613,7 +549,6 @@ async function triggerEscape(
  * Execute escape
  */
 async function executeEscape(
-    config: Config,
     chain: ChainConfig & { name: string },
     options: MultisigCommandOptions
 ): Promise<any | OfflineTransactionResult> {
@@ -672,7 +607,6 @@ async function executeEscape(
  * Cancel escape
  */
 async function cancelEscape(
-    config: Config,
     chain: ChainConfig & { name: string },
     options: MultisigCommandOptions
 ): Promise<any | OfflineTransactionResult> {
@@ -716,7 +650,6 @@ async function cancelEscape(
  * Get escape status
  */
 async function getEscape(
-    config: Config,
     chain: ChainConfig & { name: string },
     options: MultisigCommandOptions
 ): Promise<void> {
@@ -737,7 +670,6 @@ async function getEscape(
  * Get escape enabled status
  */
 async function getEscapeEnabled(
-    config: Config,
     chain: ChainConfig & { name: string },
     options: MultisigCommandOptions
 ): Promise<void> {
@@ -792,7 +724,7 @@ async function main(): Promise<void> {
         }
 
         try {
-            await getThreshold(config, { ...chain, name: STARKNET_CHAIN }, options);
+            await getThreshold({ ...chain, name: STARKNET_CHAIN }, options);
         } catch (error: any) {
             console.error(`❌ Failed to get threshold: ${error.message}`);
             process.exit(1);
@@ -814,7 +746,7 @@ async function main(): Promise<void> {
         }
 
         try {
-            await getSigners(config, { ...chain, name: STARKNET_CHAIN }, options);
+            await getSigners({ ...chain, name: STARKNET_CHAIN }, options);
         } catch (error: any) {
             console.error(`❌ Failed to get signers: ${error.message}`);
             process.exit(1);
@@ -838,7 +770,7 @@ async function main(): Promise<void> {
         }
 
         try {
-            await isSigner(config, { ...chain, name: STARKNET_CHAIN }, options);
+            await isSigner({ ...chain, name: STARKNET_CHAIN }, options);
         } catch (error: any) {
             console.error(`❌ Failed to check signer: ${error.message}`);
             process.exit(1);
@@ -852,7 +784,7 @@ async function main(): Promise<void> {
         .requiredOption('-c, --contract-address <address>', 'Multisig contract address')
         .requiredOption('-t, --threshold <number>', 'New threshold', parseInt);
 
-    addStarknetOptions(changeThresholdCmd, { ignorePrivateKey: true, ignoreAccountAddress: true, offlineSupport: true, onlineLedgerSupport: true });
+    addStarknetOptions(changeThresholdCmd, { ignorePrivateKey: true, ignoreAccountAddress: true, offlineSupport: true });
 
     changeThresholdCmd.action(async (options) => {
         validateStarknetOptions(options.env, true, undefined, options.contractAddress);
@@ -863,7 +795,7 @@ async function main(): Promise<void> {
         }
 
         try {
-            await changeThreshold(config, { ...chain, name: STARKNET_CHAIN }, options);
+            await changeThreshold({ ...chain, name: STARKNET_CHAIN }, options);
         } catch (error: any) {
             console.error(`❌ Failed to change threshold: ${error.message}`);
             process.exit(1);
@@ -879,7 +811,7 @@ async function main(): Promise<void> {
         .option('--signer-type <type>', 'Signer type (starknet, secp256k1, secp256r1, eip191)', 'starknet')
         .requiredOption('-p, --ledger-path <path>', 'Ledger derivation path');
 
-    addStarknetOptions(addSignersCmd, { ignorePrivateKey: true, ignoreAccountAddress: true, offlineSupport: true, onlineLedgerSupport: true });
+    addStarknetOptions(addSignersCmd, { ignorePrivateKey: true, ignoreAccountAddress: true, offlineSupport: true });
 
     addSignersCmd.action(async (options) => {
         validateStarknetOptions(options.env, true, undefined, options.contractAddress);
@@ -890,7 +822,7 @@ async function main(): Promise<void> {
         }
 
         try {
-            await addSigners(config, { ...chain, name: STARKNET_CHAIN }, options);
+            await addSigners({ ...chain, name: STARKNET_CHAIN }, options);
         } catch (error: any) {
             console.error(`❌ Failed to add signers: ${error.message}`);
             process.exit(1);
@@ -905,7 +837,7 @@ async function main(): Promise<void> {
         .requiredOption('-s, --signers <signers>', 'Comma-separated list of signers to remove')
         .option('--signer-type <type>', 'Signer type (starknet, secp256k1, secp256r1, eip191)', 'starknet');
 
-    addStarknetOptions(removeSignersCmd, { ignorePrivateKey: true, ignoreAccountAddress: true, offlineSupport: true, onlineLedgerSupport: true });
+    addStarknetOptions(removeSignersCmd, { ignorePrivateKey: true, ignoreAccountAddress: true, offlineSupport: true });
 
     removeSignersCmd.action(async (options) => {
         validateStarknetOptions(options.env, true, undefined, options.contractAddress);
@@ -916,7 +848,7 @@ async function main(): Promise<void> {
         }
 
         try {
-            await removeSigners(config, { ...chain, name: STARKNET_CHAIN }, options);
+            await removeSigners({ ...chain, name: STARKNET_CHAIN }, options);
         } catch (error: any) {
             console.error(`❌ Failed to remove signers: ${error.message}`);
             process.exit(1);
@@ -931,7 +863,7 @@ async function main(): Promise<void> {
         .requiredOption('--signer-to-add <address>', 'Signer to add')
         .option('--signer-type <type>', 'Signer type (starknet, secp256k1, secp256r1, eip191)', 'starknet');
 
-    addStarknetOptions(replaceSignerCmd, { ignorePrivateKey: true, ignoreAccountAddress: true, offlineSupport: true, onlineLedgerSupport: true });
+    addStarknetOptions(replaceSignerCmd, { ignorePrivateKey: true, ignoreAccountAddress: true, offlineSupport: true });
 
     replaceSignerCmd.action(async (options) => {
         validateStarknetOptions(options.env, true, undefined, options.contractAddress);
@@ -942,7 +874,7 @@ async function main(): Promise<void> {
         }
 
         try {
-            await replaceSigner(config, { ...chain, name: STARKNET_CHAIN }, options);
+            await replaceSigner({ ...chain, name: STARKNET_CHAIN }, options);
         } catch (error: any) {
             console.error(`❌ Failed to replace signer: ${error.message}`);
             process.exit(1);
@@ -959,7 +891,7 @@ async function main(): Promise<void> {
         .requiredOption('--expiry-period <seconds>', 'Expiry period in seconds')
         .requiredOption('--guardian <address>', 'Guardian address');
 
-    addStarknetOptions(toggleEscapeCmd, { ignorePrivateKey: true, ignoreAccountAddress: true, offlineSupport: true, onlineLedgerSupport: true });
+    addStarknetOptions(toggleEscapeCmd, { ignorePrivateKey: true, ignoreAccountAddress: true, offlineSupport: true });
 
     toggleEscapeCmd.action(async (options) => {
         validateStarknetOptions(options.env, true, undefined, options.contractAddress);
@@ -970,7 +902,7 @@ async function main(): Promise<void> {
         }
 
         try {
-            await toggleEscape(config, { ...chain, name: STARKNET_CHAIN }, options);
+            await toggleEscape({ ...chain, name: STARKNET_CHAIN }, options);
         } catch (error: any) {
             console.error(`❌ Failed to toggle escape: ${error.message}`);
             process.exit(1);
@@ -992,7 +924,7 @@ async function main(): Promise<void> {
         }
 
         try {
-            await getGuardian(config, { ...chain, name: STARKNET_CHAIN }, options);
+            await getGuardian({ ...chain, name: STARKNET_CHAIN }, options);
         } catch (error: any) {
             console.error(`❌ Failed to get guardian: ${error.message}`);
             process.exit(1);
@@ -1006,7 +938,7 @@ async function main(): Promise<void> {
         .requiredOption('--selector <selector>', 'Function selector to call')
         .option('--calldata <data>', 'Comma-separated calldata');
 
-    addStarknetOptions(triggerEscapeCmd, { ignorePrivateKey: true, ignoreAccountAddress: true, offlineSupport: true, onlineLedgerSupport: true });
+    addStarknetOptions(triggerEscapeCmd, { ignorePrivateKey: true, ignoreAccountAddress: true, offlineSupport: true });
 
     triggerEscapeCmd.action(async (options) => {
         validateStarknetOptions(options.env, true, undefined, options.contractAddress);
@@ -1017,7 +949,7 @@ async function main(): Promise<void> {
         }
 
         try {
-            await triggerEscape(config, { ...chain, name: STARKNET_CHAIN }, options);
+            await triggerEscape({ ...chain, name: STARKNET_CHAIN }, options);
         } catch (error: any) {
             console.error(`❌ Failed to trigger escape: ${error.message}`);
             process.exit(1);
@@ -1031,7 +963,7 @@ async function main(): Promise<void> {
         .requiredOption('--selector <selector>', 'Function selector to call')
         .option('--calldata <data>', 'Comma-separated calldata');
 
-    addStarknetOptions(executeEscapeCmd, { ignorePrivateKey: true, ignoreAccountAddress: true, offlineSupport: true, onlineLedgerSupport: true });
+    addStarknetOptions(executeEscapeCmd, { ignorePrivateKey: true, ignoreAccountAddress: true, offlineSupport: true });
 
     executeEscapeCmd.action(async (options) => {
         validateStarknetOptions(options.env, true, undefined, options.contractAddress);
@@ -1042,7 +974,7 @@ async function main(): Promise<void> {
         }
 
         try {
-            await executeEscape(config, { ...chain, name: STARKNET_CHAIN }, options);
+            await executeEscape({ ...chain, name: STARKNET_CHAIN }, options);
         } catch (error: any) {
             console.error(`❌ Failed to execute escape: ${error.message}`);
             process.exit(1);
@@ -1054,7 +986,7 @@ async function main(): Promise<void> {
         .description('Cancel ongoing escape')
         .requiredOption('-c, --contract-address <address>', 'Multisig contract address');
 
-    addStarknetOptions(cancelEscapeCmd, { ignorePrivateKey: true, ignoreAccountAddress: true, offlineSupport: true, onlineLedgerSupport: true });
+    addStarknetOptions(cancelEscapeCmd, { ignorePrivateKey: true, ignoreAccountAddress: true, offlineSupport: true });
 
     cancelEscapeCmd.action(async (options) => {
         validateStarknetOptions(options.env, true, undefined, options.contractAddress);
@@ -1065,7 +997,7 @@ async function main(): Promise<void> {
         }
 
         try {
-            await cancelEscape(config, { ...chain, name: STARKNET_CHAIN }, options);
+            await cancelEscape({ ...chain, name: STARKNET_CHAIN }, options);
         } catch (error: any) {
             console.error(`❌ Failed to cancel escape: ${error.message}`);
             process.exit(1);
@@ -1087,7 +1019,7 @@ async function main(): Promise<void> {
         }
 
         try {
-            await getEscape(config, { ...chain, name: STARKNET_CHAIN }, options);
+            await getEscape({ ...chain, name: STARKNET_CHAIN }, options);
         } catch (error: any) {
             console.error(`❌ Failed to get escape: ${error.message}`);
             process.exit(1);
@@ -1109,7 +1041,7 @@ async function main(): Promise<void> {
         }
 
         try {
-            await getEscapeEnabled(config, { ...chain, name: STARKNET_CHAIN }, options);
+            await getEscapeEnabled({ ...chain, name: STARKNET_CHAIN }, options);
         } catch (error: any) {
             console.error(`❌ Failed to get escape enabled: ${error.message}`);
             process.exit(1);

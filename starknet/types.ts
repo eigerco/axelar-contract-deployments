@@ -1,4 +1,4 @@
-'use strict';
+
 
 import {
     CompiledContract,
@@ -316,8 +316,6 @@ export interface CliOptionConfig {
     contractAddress?: boolean;
     /** Enable offline transaction support */
     offlineSupport?: boolean;
-    /** Enable online Ledger hardware wallet support */
-    onlineLedgerSupport?: boolean;
 }
 
 /**

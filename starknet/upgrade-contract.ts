@@ -1,4 +1,4 @@
-'use strict';
+
 
 import { Command } from 'commander';
 import { loadConfig, saveConfig, prompt } from '../common';
