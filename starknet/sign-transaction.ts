@@ -193,7 +193,7 @@ async function main(): Promise<void> {
         .description('Sign Starknet transaction with Ledger hardware wallet')
         .version('1.0.0')
         .argument('<transactionFile>', 'path to unsigned transaction JSON file')
-        .option('-p, --ledger-path <path>', 'Ledger derivation path', "m/44'/9004'/0'/0/0")
+        .requiredOption('-p, --ledger-path <path>', 'Ledger derivation path (e.g. "m/2645\'/1195502025\'/1148870696\'/1\'/0\'/0")')
         .option('-e, --env <env>', 'environment (mainnet, testnet, devnet)', 'mainnet')
         .option('--multisig', 'enable multisig mode (include public key in signature)', true)
         .parse();

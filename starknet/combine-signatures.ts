@@ -3,10 +3,29 @@
 import { Command } from 'commander';
 import * as fs from 'fs';
 import * as path from 'path';
+import { shortString, hash } from 'starknet';
 import { UnsignedTransaction } from './types';
 
 interface SignedTransaction extends UnsignedTransaction {
     signature: string[];
+}
+
+interface SignerData {
+    signerType: string;
+    pubkey: string;
+    r: string;
+    s: string;
+    guid: string;
+    file: string;
+}
+
+/**
+ * Calculate GUID for Starknet signer using Poseidon hash
+ */
+function calculateStarknetSignerGuid(pubkey: string): string {
+    // GUID = poseidon('Starknet Signer', signer.pubkey)
+    const starknetSignerString = 'Starknet Signer';
+    return hash.computePoseidonHash(shortString.encodeShortString(starknetSignerString), pubkey);
 }
 
 /**
@@ -29,13 +48,10 @@ function loadTransaction(filepath: string): SignedTransaction {
     if (!transaction.signature || !Array.isArray(transaction.signature)) {
         throw new Error(`Transaction file ${filepath} does not contain a valid signature array.`);
     }
-    
-    // Check signature format - either [r, s] for non-multisig or [pubkey, r, s] for multisig
-    if (transaction.signature.length === 2) {
-        // Non-multisig format - not supported in combine-signatures
-        throw new Error(`Transaction file ${filepath} contains a non-multisig signature [r, s]. Please sign with --multisig flag.`);
-    } else if (transaction.signature.length !== 3) {
-        throw new Error(`Transaction file ${filepath} contains invalid signature format. Expected 3 elements [pubkey, r, s] for multisig.`);
+
+    // Check signature format - new v0.2.0 format: [array_length, signer_type, pubkey, r, s]
+    if (transaction.signature.length !== 5) {
+        throw new Error(`Transaction file ${filepath} contains invalid signature format. Expected 5 elements [array_length, signer_type, pubkey, r, s] for v0.2.0 multisig.`);
     }
 
     return transaction;
@@ -99,20 +115,65 @@ function combineSignatures(
     }
     console.log('  ✅ All transactions match (except signatures)');
 
-    // Extract all signatures
-    console.log('\n📝 Extracting signatures...');
-    const signatures: string[] = [];
+    // Extract all signatures and prepare for sorting
+    console.log('\n📝 Extracting signatures and calculating GUIDs...');
+
+    const signers: SignerData[] = [];
+    let totalArrayLength = 0;
 
     transactions.forEach(({ file, tx }) => {
-        signatures.push(...tx.signature);
+        const [arrayLength, signerType, pubkey, r, s] = tx.signature;
+
+        // Only support Starknet signers for now
+        if (signerType !== '0') {
+            throw new Error(`Unsupported signer type ${signerType} in file ${file}. Only Starknet signers (type 0) are supported.`);
+        }
+
+        totalArrayLength += parseInt(arrayLength);
+
+        // Calculate GUID for sorting
+        const guid = calculateStarknetSignerGuid(pubkey);
+
+        signers.push({
+            signerType,
+            pubkey,
+            r,
+            s,
+            guid,
+            file: path.basename(file)
+        });
+
+        console.log(`  ${path.basename(file)}: array_length=${arrayLength}, guid=${guid}`);
     });
 
-    // Create Argent multisig format: [pubkey1, sig1_r, sig1_s, pubkey2, sig2_r, sig2_s, ...]
-    const multisigSignature = [...signatures];
+    // Sort signers by GUID in ascending order (required by Argent multisig)
+    console.log('\n🔄 Sorting signers by GUID...');
+    signers.sort((a, b) => {
+        // Convert hex strings to BigInt for proper comparison
+        const guidA = BigInt(a.guid);
+        const guidB = BigInt(b.guid);
+        if (guidA < guidB) return -1;
+        if (guidA > guidB) return 1;
+        return 0;
+    });
+
+    // Display sorted order
+    signers.forEach((signer, index) => {
+        console.log(`  ${index + 1}. ${signer.file} (GUID: ${signer.guid})`);
+    });
+
+    // Create new v0.2.0 multisig format: [total_array_length, signer_type1, pubkey1, r1, s1, signer_type2, pubkey2, r2, s2, ...]
+    const signerData: string[] = [];
+    signers.forEach(signer => {
+        signerData.push(signer.signerType, signer.pubkey, signer.r, signer.s);
+    });
+
+    const multisigSignature = [totalArrayLength.toString(), ...signerData];
 
     console.log(`\n📊 Combined signature format:`);
     console.log(`  Signature count: ${transactions.length}`);
-    console.log(`  Total elements: ${multisigSignature.length} (${transactions.length} signatures × 3 elements each)`);
+    console.log(`  Total array length: ${totalArrayLength}`);
+    console.log(`  Total elements: ${multisigSignature.length} (1 array length + ${transactions.length} signatures × 4 elements each)`);
 
     // Create output transaction
     const outputTransaction = {
