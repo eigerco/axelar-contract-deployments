@@ -86,7 +86,12 @@ async function callContract(
     }
 
     if (offline) {
-        return handleOfflineTransaction(options, chain.name, gatewayConfig.address, 'call_contract', hexCalldata, 'call_contract');
+        const calls: Call[] = [{
+            contractAddress: gatewayConfig.address,
+            entrypoint: 'call_contract',
+            calldata: hexCalldata
+        }];
+        return handleOfflineTransaction(options, chain.name, calls, 'call_contract');
     }
 
     // Online execution
@@ -138,7 +143,12 @@ async function approveMessages(
     }
 
     if (offline) {
-        return handleOfflineTransaction(options, chain.name, gatewayConfig.address, 'approve_messages', calldata, 'approve_messages');
+        const calls: Call[] = [{
+            contractAddress: gatewayConfig.address,
+            entrypoint: 'approve_messages',
+            calldata
+        }];
+        return handleOfflineTransaction(options, chain.name, calls, 'approve_messages');
     }
 
     // Online execution
@@ -198,7 +208,12 @@ async function validateMessage(
     }
 
     if (offline) {
-        return handleOfflineTransaction(options, chain.name, gatewayConfig.address, 'validate_message', calldata, 'validate_message');
+        const calls: Call[] = [{
+            contractAddress: gatewayConfig.address,
+            entrypoint: 'validate_message',
+            calldata
+        }];
+        return handleOfflineTransaction(options, chain.name, calls, 'validate_message');
     }
 
     // Online execution
@@ -248,7 +263,12 @@ async function rotateSigners(config, chain, options) {
     }
 
     if (offline) {
-        return handleOfflineTransaction(options, chain.name, gatewayConfig.address, 'rotate_signers', calldata, 'rotate_signers');
+        const calls: Call[] = [{
+            contractAddress: gatewayConfig.address,
+            entrypoint: 'rotate_signers',
+            calldata
+        }];
+        return handleOfflineTransaction(options, chain.name, calls, 'rotate_signers');
     }
 
     // Online execution
@@ -345,7 +365,12 @@ async function transferOperatorship(config, chain, options) {
     }
 
     if (offline) {
-        return handleOfflineTransaction(options, chain.name, gatewayConfig.address, 'transfer_operatorship', calldata, 'transfer_operatorship');
+        const calls: Call[] = [{
+            contractAddress: gatewayConfig.address,
+            entrypoint: 'transfer_operatorship',
+            calldata
+        }];
+        return handleOfflineTransaction(options, chain.name, calls, 'transfer_operatorship');
     }
 
     // Online execution

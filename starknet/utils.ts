@@ -195,7 +195,7 @@ export const feltToString = (felt: string): string => {
 
 /**
  * Generate unsigned invoke transaction for offline signing
- * Note: Only supports single call transactions (no multicall)
+ * Supports both single call and multicall transactions
  */
 export const generateUnsignedInvokeTransaction = (
     account: Account | string,
@@ -208,30 +208,49 @@ export const generateUnsignedInvokeTransaction = (
             throw new Error('Nonce is required for offline transaction generation');
         }
 
-        // Only support single call transactions for now
-        if (calls.length !== 1) {
-            throw new Error('Only single call transactions are supported. Multicall is not supported in offline mode.');
+        if (calls.length === 0) {
+            throw new Error('At least one call is required');
         }
 
         const accountAddress = typeof account === 'string' ? account : account.address;
-        const call = calls[0];
 
-        // Compile calldata for the single call
-        const compiledCalldata = Array.isArray(call.calldata)
-            ? call.calldata.map(String)
-            : CallData.compile(call.calldata);
+        // Build the calldata for account's __execute__ function
+        // Format for multicall: [call_array_len, calls..., calldata_len, calldata...]
+        const callArray: string[] = [];
+        const calldataArray: string[] = [];
+        // let currentOffset = 0;
 
-        // Convert entrypoint string to felt (hash)
-        const entrypointFelt = hash.getSelectorFromName(call.entrypoint);
+        // Build call array and accumulate calldata
+        for (const call of calls) {
+            // Compile calldata for this call
+            const compiledCalldata = Array.isArray(call.calldata)
+                ? call.calldata.map(String)
+                : CallData.compile(call.calldata);
 
-        // Create calldata for account's __execute__ function
-        // Format: [call_array_len, to, selector, data_offset, data_len, calldata...]
+            // Convert entrypoint string to felt (hash)
+            const entrypointFelt = hash.getSelectorFromName(call.entrypoint);
+
+            // Add to call array: [to, selector, data_offset, data_len]
+            callArray.push(
+                call.contractAddress,
+                entrypointFelt,
+                // currentOffset.toString(),
+                // compiledCalldata.length.toString()
+            );
+
+            // Add calldata
+            calldataArray.push(...compiledCalldata);
+
+            // Update offset for next call
+            // currentOffset += compiledCalldata.length;
+        }
+
+        // Create final calldata for account's __execute__ function
         const calldata = [
-            '1', // call_array_len (single call)
-            call.contractAddress,
-            entrypointFelt,
-            compiledCalldata.length.toString(),
-            ...compiledCalldata
+            calls.length.toString(), // call_array_len
+            ...callArray,
+            calldataArray.length.toString(), // calldata_len
+            ...calldataArray
         ];
 
         const unsignedTx: UnsignedInvokeTransaction = {
@@ -247,10 +266,22 @@ export const generateUnsignedInvokeTransaction = (
             nonce_data_availability_mode: 'L1',
             fee_data_availability_mode: 'L1',
             timestamp: Date.now(),
-            // Store original values for Ledger signing
-            entrypoint_name: call.entrypoint,
-            contract_address: call.contractAddress,
         };
+
+        // For single call, store original values for Ledger signing
+        if (calls.length === 1) {
+            unsignedTx.entrypoint_name = calls[0].entrypoint;
+            unsignedTx.contract_address = calls[0].contractAddress;
+        } else {
+            // For multicall, store all call information
+            unsignedTx.multicall_info = calls.map(call => ({
+                contract_address: call.contractAddress,
+                entrypoint: call.entrypoint,
+                calldata: Array.isArray(call.calldata)
+                    ? call.calldata.map(String)
+                    : CallData.compile(call.calldata)
+            }));
+        }
 
         return unsignedTx;
     } catch (error: any) {
@@ -327,9 +358,7 @@ export const validateStarknetOptions = (
 export const handleOfflineTransaction = (
     options: OfflineTransactionOptions,
     chainName: string,
-    contractAddress: string,
-    entrypoint: string,
-    calldata: any[],
+    calls: Call[],
     operationName: string
 ): OfflineTransactionResult => {
     const {
@@ -352,13 +381,6 @@ export const handleOfflineTransaction = (
     }
 
     console.log(`\nGenerating unsigned transaction for ${operationName} on ${chainName}...`);
-
-    // Create contract call
-    const calls: Call[] = [{
-        contractAddress,
-        entrypoint,
-        calldata
-    }];
 
     // Build resource bounds with provided values (defaults applied by CLI)
     const resourceBounds: ResourceBounds = {

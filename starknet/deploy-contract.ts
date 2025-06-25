@@ -16,7 +16,7 @@ import {
     getStarknetProvider,
     estimateGasAndDisplayArgs
 } from './utils';
-import { CallData } from 'starknet';
+import { CallData, Call } from 'starknet';
 import {
     Config,
     ChainConfig,
@@ -104,7 +104,12 @@ async function processCommand(
 
         // Use common offline transaction handler
         const operationName = `deploy_${contractConfigName}`;
-        return handleOfflineTransaction(options, chain.name, targetContractAddress, entrypoint, deployCalldata, operationName);
+        const calls: Call[] = [{
+            contractAddress: targetContractAddress,
+            entrypoint,
+            calldata: deployCalldata
+        }];
+        return handleOfflineTransaction(options, chain.name, calls, operationName);
     }
 
     console.log(`\nDeploying ${contractConfigName} on ${chain.name}...`);
