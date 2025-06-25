@@ -215,12 +215,13 @@ export const generateUnsignedInvokeTransaction = (
         const accountAddress = typeof account === 'string' ? account : account.address;
 
         // Build the calldata for account's __execute__ function
-        // Format for multicall: [call_array_len, calls..., calldata_len, calldata...]
-        const callArray: string[] = [];
-        const calldataArray: string[] = [];
-        // let currentOffset = 0;
+        // For Argent multisig: Array<Call> format
+        const calldata: string[] = [];
+        
+        // Add number of calls
+        calldata.push(calls.length.toString());
 
-        // Build call array and accumulate calldata
+        // Add each call in sequence
         for (const call of calls) {
             // Compile calldata for this call
             const compiledCalldata = Array.isArray(call.calldata)
@@ -230,28 +231,14 @@ export const generateUnsignedInvokeTransaction = (
             // Convert entrypoint string to felt (hash)
             const entrypointFelt = hash.getSelectorFromName(call.entrypoint);
 
-            // Add to call array: [to, selector, data_offset, data_len]
-            callArray.push(
+            // Add call data: [to, selector, calldata_len, ...calldata]
+            calldata.push(
                 call.contractAddress,
                 entrypointFelt,
-                // currentOffset.toString(),
-                // compiledCalldata.length.toString()
+                compiledCalldata.length.toString(),
+                ...compiledCalldata
             );
-
-            // Add calldata
-            calldataArray.push(...compiledCalldata);
-
-            // Update offset for next call
-            // currentOffset += compiledCalldata.length;
         }
-
-        // Create final calldata for account's __execute__ function
-        const calldata = [
-            calls.length.toString(), // call_array_len
-            ...callArray,
-            calldataArray.length.toString(), // calldata_len
-            ...calldataArray
-        ];
 
         const unsignedTx: UnsignedInvokeTransaction = {
             type: 'INVOKE',

@@ -62,16 +62,25 @@ async function signWithLedger(
         console.log('\n✍️  Please review and sign the transaction on your Ledger device...');
         console.log('⚠️  Note: You will see the transaction hash on your device screen.');
 
-        // Use the stored original entrypoint name and contract address for Ledger signing
-        if (!transaction.entrypoint_name || !transaction.contract_address) {
-            throw new Error('Transaction missing original entrypoint_name or contract_address required for Ledger signing');
+        // Check if this is a multicall transaction
+        if (transaction.multicall_info && transaction.multicall_info.length > 0) {
+            console.log('\n📋 Multicall Transaction Details:');
+            console.log(`Number of calls: ${transaction.multicall_info.length}`);
+            transaction.multicall_info.forEach((call, index) => {
+                console.log(`\nCall ${index + 1}:`);
+                console.log(`  Contract: ${call.contract_address}`);
+                console.log(`  Function: ${call.entrypoint}`);
+                console.log(`  Arguments: ${call.calldata.length} parameters`);
+            });
+        } else {
+            // Single call transaction
+            if (!transaction.entrypoint_name || !transaction.contract_address) {
+                throw new Error('Transaction missing original entrypoint_name or contract_address required for Ledger signing');
+            }
+            console.log('\n📋 Transaction Details:');
+            console.log(`  Contract: ${transaction.contract_address}`);
+            console.log(`  Function: ${transaction.entrypoint_name}`);
         }
-
-        const reconstructedCall = {
-            contractAddress: transaction.contract_address,
-            entrypoint: transaction.entrypoint_name,
-            calldata: transaction.calldata
-        };
 
         // Calculate and log the transaction hash for debugging
         const txHash = hash.calculateInvokeTransactionHash({

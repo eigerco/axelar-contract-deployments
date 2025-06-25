@@ -139,6 +139,8 @@ export interface UnsignedInvokeTransaction extends BaseUnsignedTransaction {
     entrypoint_name?: string;
     /** Original contract address for Ledger signing (not included in final transaction) */
     contract_address?: string;
+    /** Original calls for multicall transactions (for Ledger display, not included in final transaction) */
+    multicall_info?: MulticallEntry[];
 }
 
 /**
@@ -314,5 +316,34 @@ export interface CliOptionConfig {
     contractAddress?: boolean;
     /** Enable offline transaction support */
     offlineSupport?: boolean;
+}
+
+/**
+ * Configuration for a single call in a multicall transaction
+ */
+export interface MulticallEntry {
+    /** Contract address to call */
+    contract_address: string;
+    /** Function entrypoint to call */
+    entrypoint: string;
+    /** Calldata for the function call */
+    calldata: string[];
+}
+
+/**
+ * Configuration for multicall transactions
+ * Loaded from JSON configuration file
+ */
+export interface MulticallConfig {
+    /** Array of calls to execute in the multicall */
+    calls: MulticallEntry[];
+}
+
+/**
+ * Options for multicall command
+ */
+export interface MulticallCommandOptions extends StarknetCommandOptions {
+    /** Path to the multicall configuration JSON file */
+    config: string;
 }
 
