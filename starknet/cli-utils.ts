@@ -27,6 +27,13 @@ export const addStarknetOptions = (program: Command, config: CliOptionConfig = {
         );
     }
 
+    if (config.onlineLedgerSupport) {
+        program.addOption(
+            new Option('--ledger-path <ledgerPath>', 'Ledger derivation path for online transactions')
+                .env('LEDGER_PATH')
+        );
+    }
+
     if (config.offlineSupport) {
         program.addOption(
             new Option('--offline', 'generate unsigned transaction for offline signing')
