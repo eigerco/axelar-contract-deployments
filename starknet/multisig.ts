@@ -551,7 +551,27 @@ async function triggerEscape(
         return handleOfflineTransaction(options, chain.name, calls, 'trigger_escape');
     }
 
-    // Always generate offline transaction for Ledger signing
+    // Check if we have credentials for online execution
+    if (options.privateKey && options.accountAddress) {
+        // Online execution
+        const provider = getStarknetProvider(chain);
+        const account = getStarknetAccount(options.privateKey, options.accountAddress, provider);
+        
+        // Get contract ABI and execute
+        const { abi } = await provider.getClassAt(contractAddress);
+        const multisigContract = new Contract(abi, contractAddress, provider);
+        multisigContract.connect(account);
+        
+        const response = await multisigContract.trigger_escape(escapeCall);
+        await account.waitForTransaction(response.transaction_hash);
+        
+        console.log(`✅ Escape triggered successfully!`);
+        console.log(`Transaction Hash: ${response.transaction_hash}`);
+        
+        return response;
+    }
+
+    // Default to offline transaction for Ledger signing
     console.log('\n📝 Generating unsigned transaction for Ledger signing...');
     return handleOfflineTransaction(options, chain.name, calls, 'trigger_escape');
 }
@@ -602,7 +622,27 @@ async function executeEscape(
         return handleOfflineTransaction(options, chain.name, calls, 'execute_escape');
     }
 
-    // Always generate offline transaction for Ledger signing
+    // Check if we have credentials for online execution
+    if (options.privateKey && options.accountAddress) {
+        // Online execution
+        const provider = getStarknetProvider(chain);
+        const account = getStarknetAccount(options.privateKey, options.accountAddress, provider);
+        
+        // Get contract ABI and execute
+        const { abi } = await provider.getClassAt(contractAddress);
+        const multisigContract = new Contract(abi, contractAddress, provider);
+        multisigContract.connect(account);
+        
+        const response = await multisigContract.execute_escape(escapeCall);
+        await account.waitForTransaction(response.transaction_hash);
+        
+        console.log(`✅ Escape executed successfully!`);
+        console.log(`Transaction Hash: ${response.transaction_hash}`);
+        
+        return response;
+    }
+
+    // Default to offline transaction for Ledger signing
     console.log('\n📝 Generating unsigned transaction for Ledger signing...');
     return handleOfflineTransaction(options, chain.name, calls, 'execute_escape');
 }
@@ -638,7 +678,27 @@ async function cancelEscape(
         return handleOfflineTransaction(options, chain.name, calls, 'cancel_escape');
     }
 
-    // Always generate offline transaction for Ledger signing
+    // Check if we have credentials for online execution
+    if (options.privateKey && options.accountAddress) {
+        // Online execution
+        const provider = getStarknetProvider(chain);
+        const account = getStarknetAccount(options.privateKey, options.accountAddress, provider);
+        
+        // Get contract ABI and execute
+        const { abi } = await provider.getClassAt(contractAddress);
+        const multisigContract = new Contract(abi, contractAddress, provider);
+        multisigContract.connect(account);
+        
+        const response = await multisigContract.cancel_escape();
+        await account.waitForTransaction(response.transaction_hash);
+        
+        console.log(`✅ Escape cancelled successfully!`);
+        console.log(`Transaction Hash: ${response.transaction_hash}`);
+        
+        return response;
+    }
+
+    // Default to offline transaction for Ledger signing
     console.log('\n📝 Generating unsigned transaction for Ledger signing...');
     return handleOfflineTransaction(options, chain.name, calls, 'cancel_escape');
 }
