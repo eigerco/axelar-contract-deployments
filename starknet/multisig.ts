@@ -26,11 +26,40 @@ import { StarknetClient } from '@ledgerhq/hw-app-starknet';
 // Constant for Starknet chain name in config
 const STARKNET_CHAIN = 'starknet';
 
+// Enum for signer types matching Cairo contract
+enum SignerType {
+    Starknet = 0,
+    Secp256k1 = 1,
+    Secp256r1 = 2,
+    Eip191 = 3,
+    Webauthn = 4
+}
+
+// Map string signer type to enum
+function getSignerTypeValue(signerType: string): number {
+    const type = signerType.toLowerCase();
+    switch (type) {
+        case 'starknet':
+            return SignerType.Starknet;
+        case 'secp256k1':
+            return SignerType.Secp256k1;
+        case 'secp256r1':
+            return SignerType.Secp256r1;
+        case 'eip191':
+            return SignerType.Eip191;
+        case 'webauthn':
+            return SignerType.Webauthn;
+        default:
+            throw new Error(`Unknown signer type: ${type}`);
+    }
+}
+
 // Interface for command options
 interface MultisigCommandOptions extends StarknetCommandOptions {
     contractAddress: string;
     ledgerPath?: string;
     threshold?: number;
+    signer?: string;
     signers?: string;
     signerToRemove?: string;
     signerToAdd?: string;
@@ -43,61 +72,48 @@ interface MultisigCommandOptions extends StarknetCommandOptions {
     calldata?: string;
 }
 
-/**
- * Parse signer from string input
- */
-function parseSigner(signerStr: string, signerType: string = 'starknet'): any {
-    const type = signerType.toLowerCase();
 
-    switch (type) {
-        case 'starknet':
-            return {
-                variant: {
-                    Starknet: {
-                        pubkey: signerStr
-                    }
-                }
-            };
-        case 'secp256k1':
-            return {
-                variant: {
-                    Secp256k1: {
-                        pubkey_hash: {
-                            address: signerStr
-                        }
-                    }
-                }
-            };
-        case 'secp256r1':
-            return {
-                variant: {
-                    Secp256r1: {
-                        pubkey: signerStr
-                    }
-                }
-            };
-        case 'eip191':
-            return {
-                variant: {
-                    Eip191: {
-                        eth_address: {
-                            address: signerStr
-                        }
-                    }
-                }
-            };
-        case 'webauthn':
-            throw new Error('Webauthn signer parsing not implemented in this script');
-        default:
-            throw new Error(`Unknown signer type: ${type}`);
+/**
+ * Prepare multisig options - set account address and validate
+ */
+function prepareMultisigOptions(options: MultisigCommandOptions): void {
+    // For multisig, account address is the contract address
+    if (!options.accountAddress) {
+        options.accountAddress = options.contractAddress;
+    }
+
+    // Skip private key validation for estimation
+    if (!options.estimate) {
+        validateStarknetOptions(options.env, options.offline, options.privateKey, options.accountAddress);
     }
 }
 
 /**
- * Parse multiple signers from comma-separated string
+ * Common function to handle gas estimation for multisig operations
  */
-function parseSigners(signersStr: string, signerType: string = 'starknet'): any[] {
-    return signersStr.split(',').map(s => parseSigner(s.trim(), signerType));
+async function handleGasEstimation(
+    chain: ChainConfig & { name: string },
+    options: MultisigCommandOptions,
+    contractAddress: string,
+    entrypoint: string,
+    calldata: any[]
+): Promise<Record<string, never>> {
+    console.log(`\nEstimating gas for ${entrypoint} on ${chain.name}...`);
+
+    const provider = getStarknetProvider(chain);
+    // For multisig, the account address is the contract address itself
+    const accountAddress = options.accountAddress || contractAddress;
+    // Use a dummy private key for estimation since we're just simulating
+    const dummyPrivateKey = '0x1';
+    const account = getStarknetAccount(dummyPrivateKey, accountAddress, provider);
+    const calls: Call[] = [{
+        contractAddress,
+        entrypoint,
+        calldata
+    }];
+
+    await estimateGasAndDisplayArgs(account, calls);
+    return {}; // Return empty for estimation
 }
 
 /**
@@ -169,7 +185,7 @@ async function getSigners(
 
     console.log(`\nSigners (${signerGuids.length} total):`);
     signerGuids.forEach((guid: any, index: number) => {
-        console.log(`  ${index + 1}. ${guid}`);
+        console.log(`  ${index + 1}. ${num.toHex(guid)}`);
     });
 }
 
@@ -184,13 +200,22 @@ async function isSigner(
     const { abi } = await provider.getClassAt(options.contractAddress);
     const multisigContract = new Contract(abi, options.contractAddress, provider);
 
-    if (!options.signers || !options.signerType) {
+    if (!options.signer || !options.signerType) {
         throw new Error('Signer and signer type required');
     }
 
     console.log(`\nChecking if signer exists in multisig at ${options.contractAddress}...`);
-    const signer = parseSigner(options.signers, options.signerType);
-    const result = await multisigContract.is_signer(signer);
+    console.log(`  Signer: ${options.signer}`);
+    console.log(`  Type: ${options.signerType}`);
+
+    // Get the numeric value for the signer type
+    const signerTypeValue = getSignerTypeValue(options.signerType);
+
+    // Pass as tuple [signer_type, signer_data]
+    const result = await multisigContract.is_signer(CallData.compile([
+        signerTypeValue,
+        options.signer
+    ]));
 
     console.log(`Is signer: ${result}`);
 }
@@ -203,9 +228,6 @@ async function changeThreshold(
     options: MultisigCommandOptions
 ): Promise<any | OfflineTransactionResult> {
     const {
-        privateKey,
-        accountAddress,
-        offline,
         estimate,
         threshold,
         contractAddress
@@ -228,12 +250,7 @@ async function changeThreshold(
 
     // Handle estimate mode
     if (estimate) {
-        console.log(`\nEstimating gas for change_threshold...`);
-        const provider = getStarknetProvider(chain);
-        // For estimate, use dummy account since we only need gas estimation
-        const dummyAccount = getStarknetAccount('0x1', options.contractAddress!, provider);
-        await estimateGasAndDisplayArgs(dummyAccount, calls);
-        return {};
+        return handleGasEstimation(chain, options, contractAddress, 'change_threshold', hexCalldata);
     }
 
     // Always generate offline transaction for Ledger signing
@@ -252,9 +269,6 @@ async function addSigners(
     options: MultisigCommandOptions
 ): Promise<any | OfflineTransactionResult> {
     const {
-        privateKey,
-        accountAddress,
-        offline,
         estimate,
         threshold,
         signers,
@@ -266,11 +280,23 @@ async function addSigners(
         throw new Error('New threshold and signers required');
     }
 
-    const signersArray = parseSigners(signers, signerType || 'starknet');
+    console.log(`\nAdding signers with new threshold ${threshold}`);
 
-    console.log(`\nAdding ${signersArray.length} signers with new threshold ${threshold}`);
-
-    const calldata = CallData.compile([threshold, signersArray]);
+    // Parse signers in the same format as is_signer
+    const signersList = signers.split(',').map(s => s.trim());
+    const signerTypeValue = getSignerTypeValue(signerType || 'starknet');
+    
+    // Build the calldata: [threshold, array_length, ...signers]
+    // Each signer is a tuple [signer_type, signer_data]
+    const calldataArray: any[] = [threshold, signersList.length];
+    
+    // Add each signer as [type, data]
+    for (const signerData of signersList) {
+        calldataArray.push(signerTypeValue);
+        calldataArray.push(signerData);
+    }
+    
+    const calldata = CallData.compile(calldataArray);
     const hexCalldata = calldata.map(item => num.toHex(item));
 
     const calls: Call[] = [{
@@ -281,12 +307,7 @@ async function addSigners(
 
     // Handle estimate mode
     if (estimate) {
-        console.log(`\nEstimating gas for add_signers...`);
-        const provider = getStarknetProvider(chain);
-        // For estimate, use dummy account since we only need gas estimation
-        const dummyAccount = getStarknetAccount('0x1', options.contractAddress!, provider);
-        await estimateGasAndDisplayArgs(dummyAccount, calls);
-        return {};
+        return handleGasEstimation(chain, options, contractAddress, 'add_signers', hexCalldata);
     }
 
     // Always generate offline transaction for Ledger signing
@@ -305,8 +326,6 @@ async function removeSigners(
     options: MultisigCommandOptions
 ): Promise<any | OfflineTransactionResult> {
     const {
-        privateKey,
-        accountAddress,
         offline,
         estimate,
         threshold,
@@ -319,11 +338,23 @@ async function removeSigners(
         throw new Error('New threshold and signers required');
     }
 
-    const signersArray = parseSigners(signers, signerType || 'starknet');
+    console.log(`\nRemoving signers with new threshold ${threshold}`);
 
-    console.log(`\nRemoving ${signersArray.length} signers with new threshold ${threshold}`);
-
-    const calldata = CallData.compile([threshold, signersArray]);
+    // Parse signers in the same format as is_signer
+    const signersList = signers.split(',').map(s => s.trim());
+    const signerTypeValue = getSignerTypeValue(signerType || 'starknet');
+    
+    // Build the calldata: [threshold, array_length, ...signers]
+    // Each signer is a tuple [signer_type, signer_data]
+    const calldataArray: any[] = [threshold, signersList.length];
+    
+    // Add each signer as [type, data]
+    for (const signerData of signersList) {
+        calldataArray.push(signerTypeValue);
+        calldataArray.push(signerData);
+    }
+    
+    const calldata = CallData.compile(calldataArray);
     const hexCalldata = calldata.map(item => num.toHex(item));
 
     const calls: Call[] = [{
@@ -334,12 +365,7 @@ async function removeSigners(
 
     // Handle estimate mode
     if (estimate) {
-        console.log(`\nEstimating gas for remove_signers...`);
-        const provider = getStarknetProvider(chain);
-        // For estimate, use dummy account since we only need gas estimation
-        const dummyAccount = getStarknetAccount('0x1', options.contractAddress!, provider);
-        await estimateGasAndDisplayArgs(dummyAccount, calls);
-        return {};
+        return handleGasEstimation(chain, options, contractAddress, 'remove_signers', hexCalldata);
     }
 
     // Handle offline mode
@@ -360,8 +386,6 @@ async function replaceSigner(
     options: MultisigCommandOptions
 ): Promise<any | OfflineTransactionResult> {
     const {
-        privateKey,
-        accountAddress,
         offline,
         estimate,
         signerToRemove,
@@ -374,12 +398,18 @@ async function replaceSigner(
         throw new Error('Both signer to remove and signer to add required');
     }
 
-    const signerRemove = parseSigner(signerToRemove, signerType || 'starknet');
-    const signerAdd = parseSigner(signerToAdd, signerType || 'starknet');
-
     console.log(`\nReplacing signer in multisig at ${contractAddress}`);
 
-    const calldata = CallData.compile([signerRemove, signerAdd]);
+    // Parse signers in the same format as is_signer
+    const signerTypeValue = getSignerTypeValue(signerType || 'starknet');
+    
+    // Build the calldata: [signer_to_remove_type, signer_to_remove_data, signer_to_add_type, signer_to_add_data]
+    const calldata = CallData.compile([
+        signerTypeValue,
+        signerToRemove,
+        signerTypeValue,
+        signerToAdd
+    ]);
     const hexCalldata = calldata.map(item => num.toHex(item));
 
     const calls: Call[] = [{
@@ -390,12 +420,7 @@ async function replaceSigner(
 
     // Handle estimate mode
     if (estimate) {
-        console.log(`\nEstimating gas for replace_signer...`);
-        const provider = getStarknetProvider(chain);
-        // For estimate, use dummy account since we only need gas estimation
-        const dummyAccount = getStarknetAccount('0x1', options.contractAddress!, provider);
-        await estimateGasAndDisplayArgs(dummyAccount, calls);
-        return {};
+        return handleGasEstimation(chain, options, contractAddress, 'replace_signer', hexCalldata);
     }
 
     // Handle offline mode
@@ -416,8 +441,6 @@ async function toggleEscape(
     options: MultisigCommandOptions
 ): Promise<any | OfflineTransactionResult> {
     const {
-        privateKey,
-        accountAddress,
         offline,
         estimate,
         isEnabled,
@@ -453,12 +476,7 @@ async function toggleEscape(
 
     // Handle estimate mode
     if (estimate) {
-        console.log(`\nEstimating gas for toggle_escape...`);
-        const provider = getStarknetProvider(chain);
-        // For estimate, use dummy account since we only need gas estimation
-        const dummyAccount = getStarknetAccount('0x1', options.contractAddress!, provider);
-        await estimateGasAndDisplayArgs(dummyAccount, calls);
-        return {};
+        return handleGasEstimation(chain, options, contractAddress, 'toggle_escape', hexCalldata);
     }
 
     // Handle offline mode
@@ -495,8 +513,6 @@ async function triggerEscape(
     options: MultisigCommandOptions
 ): Promise<any | OfflineTransactionResult> {
     const {
-        privateKey,
-        accountAddress,
         offline,
         estimate,
         selector,
@@ -527,12 +543,7 @@ async function triggerEscape(
 
     // Handle estimate mode
     if (estimate) {
-        console.log(`\nEstimating gas for trigger_escape...`);
-        const provider = getStarknetProvider(chain);
-        // For estimate, use dummy account since we only need gas estimation
-        const dummyAccount = getStarknetAccount('0x1', options.contractAddress!, provider);
-        await estimateGasAndDisplayArgs(dummyAccount, calls);
-        return {};
+        return handleGasEstimation(chain, options, contractAddress, 'trigger_escape', hexCalldata);
     }
 
     // Handle offline mode
@@ -553,8 +564,6 @@ async function executeEscape(
     options: MultisigCommandOptions
 ): Promise<any | OfflineTransactionResult> {
     const {
-        privateKey,
-        accountAddress,
         offline,
         estimate,
         selector,
@@ -585,12 +594,7 @@ async function executeEscape(
 
     // Handle estimate mode
     if (estimate) {
-        console.log(`\nEstimating gas for execute_escape...`);
-        const provider = getStarknetProvider(chain);
-        // For estimate, use dummy account since we only need gas estimation
-        const dummyAccount = getStarknetAccount('0x1', options.contractAddress!, provider);
-        await estimateGasAndDisplayArgs(dummyAccount, calls);
-        return {};
+        return handleGasEstimation(chain, options, contractAddress, 'execute_escape', hexCalldata);
     }
 
     // Handle offline mode
@@ -611,8 +615,6 @@ async function cancelEscape(
     options: MultisigCommandOptions
 ): Promise<any | OfflineTransactionResult> {
     const {
-        privateKey,
-        accountAddress,
         offline,
         estimate,
         contractAddress
@@ -628,12 +630,7 @@ async function cancelEscape(
 
     // Handle estimate mode
     if (estimate) {
-        console.log(`\nEstimating gas for cancel_escape...`);
-        const provider = getStarknetProvider(chain);
-        // For estimate, use dummy account since we only need gas estimation
-        const dummyAccount = getStarknetAccount('0x1', options.contractAddress!, provider);
-        await estimateGasAndDisplayArgs(dummyAccount, calls);
-        return {};
+        return handleGasEstimation(chain, options, contractAddress, 'cancel_escape', []);
     }
 
     // Handle offline mode
@@ -658,11 +655,24 @@ async function getEscape(
     const multisigContract = new Contract(abi, options.contractAddress, provider);
 
     console.log(`\nGetting escape status for multisig at ${options.contractAddress}...`);
-    const [escape, status] = await multisigContract.get_escape();
+    const result = await multisigContract.get_escape();
+
+    // The result might be a single object or tuple, let's handle both cases
+    let escape, status;
+    if (Array.isArray(result)) {
+        [escape, status] = result;
+    } else if (result.escape && result.status !== undefined) {
+        escape = result.escape;
+        status = result.status;
+    } else {
+        // Assume the result is the escape object itself
+        escape = result;
+        status = 'Unknown';
+    }
 
     console.log('\nEscape Status:');
-    console.log(`  Ready At: ${escape.ready_at}`);
-    console.log(`  Call Hash: ${escape.call_hash}`);
+    console.log(`  Ready At: ${escape?.ready_at || 'N/A'}`);
+    console.log(`  Call Hash: ${escape?.call_hash || 'N/A'}`);
     console.log(`  Status: ${status}`);
 }
 
@@ -757,7 +767,7 @@ async function main(): Promise<void> {
         .command('is-signer')
         .description('Check if an address is a signer')
         .requiredOption('-c, --contract-address <address>', 'Multisig contract address')
-        .requiredOption('-s, --signers <signers>', 'Signer address to check')
+        .requiredOption('-s, --signer <signer>', 'Signer pubkey to check')
         .option('-t, --signer-type <type>', 'Signer type (starknet, secp256k1, secp256r1, eip191)', 'starknet');
 
     addStarknetOptions(isSignerCmd, { ignorePrivateKey: true, ignoreAccountAddress: true });
@@ -784,10 +794,10 @@ async function main(): Promise<void> {
         .requiredOption('-c, --contract-address <address>', 'Multisig contract address')
         .requiredOption('-t, --threshold <number>', 'New threshold', parseInt);
 
-    addStarknetOptions(changeThresholdCmd, { ignorePrivateKey: true, ignoreAccountAddress: true, offlineSupport: true });
+    addStarknetOptions(changeThresholdCmd, { offlineSupport: true });
 
     changeThresholdCmd.action(async (options) => {
-        validateStarknetOptions(options.env, true, undefined, options.contractAddress);
+        prepareMultisigOptions(options);
         const config = loadConfig(options.env);
         const chain = config.chains[STARKNET_CHAIN];
         if (!chain) {
@@ -808,13 +818,12 @@ async function main(): Promise<void> {
         .requiredOption('-c, --contract-address <address>', 'Multisig contract address')
         .requiredOption('-t, --threshold <number>', 'New threshold', parseInt)
         .requiredOption('-s, --signers <signers>', 'Comma-separated list of signers to add')
-        .option('--signer-type <type>', 'Signer type (starknet, secp256k1, secp256r1, eip191)', 'starknet')
-        .requiredOption('-p, --ledger-path <path>', 'Ledger derivation path');
+        .option('--signer-type <type>', 'Signer type (starknet, secp256k1, secp256r1, eip191)', 'starknet');
 
-    addStarknetOptions(addSignersCmd, { ignorePrivateKey: true, ignoreAccountAddress: true, offlineSupport: true });
+    addStarknetOptions(addSignersCmd, { offlineSupport: true });
 
     addSignersCmd.action(async (options) => {
-        validateStarknetOptions(options.env, true, undefined, options.contractAddress);
+        prepareMultisigOptions(options);
         const config = loadConfig(options.env);
         const chain = config.chains[STARKNET_CHAIN];
         if (!chain) {
@@ -837,10 +846,10 @@ async function main(): Promise<void> {
         .requiredOption('-s, --signers <signers>', 'Comma-separated list of signers to remove')
         .option('--signer-type <type>', 'Signer type (starknet, secp256k1, secp256r1, eip191)', 'starknet');
 
-    addStarknetOptions(removeSignersCmd, { ignorePrivateKey: true, ignoreAccountAddress: true, offlineSupport: true });
+    addStarknetOptions(removeSignersCmd, { offlineSupport: true });
 
     removeSignersCmd.action(async (options) => {
-        validateStarknetOptions(options.env, true, undefined, options.contractAddress);
+        prepareMultisigOptions(options);
         const config = loadConfig(options.env);
         const chain = config.chains[STARKNET_CHAIN];
         if (!chain) {
@@ -863,10 +872,10 @@ async function main(): Promise<void> {
         .requiredOption('--signer-to-add <address>', 'Signer to add')
         .option('--signer-type <type>', 'Signer type (starknet, secp256k1, secp256r1, eip191)', 'starknet');
 
-    addStarknetOptions(replaceSignerCmd, { ignorePrivateKey: true, ignoreAccountAddress: true, offlineSupport: true });
+    addStarknetOptions(replaceSignerCmd, { offlineSupport: true });
 
     replaceSignerCmd.action(async (options) => {
-        validateStarknetOptions(options.env, true, undefined, options.contractAddress);
+        prepareMultisigOptions(options);
         const config = loadConfig(options.env);
         const chain = config.chains[STARKNET_CHAIN];
         if (!chain) {
@@ -891,10 +900,10 @@ async function main(): Promise<void> {
         .requiredOption('--expiry-period <seconds>', 'Expiry period in seconds')
         .requiredOption('--guardian <address>', 'Guardian address');
 
-    addStarknetOptions(toggleEscapeCmd, { ignorePrivateKey: true, ignoreAccountAddress: true, offlineSupport: true });
+    addStarknetOptions(toggleEscapeCmd, { offlineSupport: true });
 
     toggleEscapeCmd.action(async (options) => {
-        validateStarknetOptions(options.env, true, undefined, options.contractAddress);
+        prepareMultisigOptions(options);
         const config = loadConfig(options.env);
         const chain = config.chains[STARKNET_CHAIN];
         if (!chain) {
@@ -938,10 +947,10 @@ async function main(): Promise<void> {
         .requiredOption('--selector <selector>', 'Function selector to call')
         .option('--calldata <data>', 'Comma-separated calldata');
 
-    addStarknetOptions(triggerEscapeCmd, { ignorePrivateKey: true, ignoreAccountAddress: true, offlineSupport: true });
+    addStarknetOptions(triggerEscapeCmd, { offlineSupport: true });
 
     triggerEscapeCmd.action(async (options) => {
-        validateStarknetOptions(options.env, true, undefined, options.contractAddress);
+        prepareMultisigOptions(options);
         const config = loadConfig(options.env);
         const chain = config.chains[STARKNET_CHAIN];
         if (!chain) {
@@ -963,10 +972,10 @@ async function main(): Promise<void> {
         .requiredOption('--selector <selector>', 'Function selector to call')
         .option('--calldata <data>', 'Comma-separated calldata');
 
-    addStarknetOptions(executeEscapeCmd, { ignorePrivateKey: true, ignoreAccountAddress: true, offlineSupport: true });
+    addStarknetOptions(executeEscapeCmd, { offlineSupport: true });
 
     executeEscapeCmd.action(async (options) => {
-        validateStarknetOptions(options.env, true, undefined, options.contractAddress);
+        prepareMultisigOptions(options);
         const config = loadConfig(options.env);
         const chain = config.chains[STARKNET_CHAIN];
         if (!chain) {
@@ -986,10 +995,10 @@ async function main(): Promise<void> {
         .description('Cancel ongoing escape')
         .requiredOption('-c, --contract-address <address>', 'Multisig contract address');
 
-    addStarknetOptions(cancelEscapeCmd, { ignorePrivateKey: true, ignoreAccountAddress: true, offlineSupport: true });
+    addStarknetOptions(cancelEscapeCmd, { offlineSupport: true });
 
     cancelEscapeCmd.action(async (options) => {
-        validateStarknetOptions(options.env, true, undefined, options.contractAddress);
+        prepareMultisigOptions(options);
         const config = loadConfig(options.env);
         const chain = config.chains[STARKNET_CHAIN];
         if (!chain) {

@@ -100,13 +100,14 @@ async function broadcastTransaction(
         };
 
         // Use provider.fetch to directly submit the signed transaction
-        console.log("CLEAN TX", cleanTransaction);
         const response = await provider.fetch('starknet_addInvokeTransaction', {
             invoke_transaction: cleanTransaction
         });
 
         const result = await response.json();
-        console.log("KOR", result);
+        if (result && result.error) {
+            throw result.error;
+        }
 
         console.log('✅ Transaction broadcasted successfully!');
         console.log(`  Transaction hash: ${result.result.transaction_hash}`);
@@ -134,7 +135,7 @@ async function broadcastTransaction(
 
     } catch (error) {
         console.error('❌ Failed to broadcast transaction:');
-        console.error(`  Error: ${error instanceof Error ? error.message : String(error)}`);
+        console.error(error);
         throw error;
     }
 }
