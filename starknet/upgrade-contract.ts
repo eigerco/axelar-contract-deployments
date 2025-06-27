@@ -1,4 +1,4 @@
-'use strict';
+
 
 import { Command } from 'commander';
 import { loadConfig, saveConfig, prompt } from '../common';
@@ -16,7 +16,7 @@ import {
     getStarknetProvider,
     estimateGasAndDisplayArgs
 } from './utils';
-import { CallData } from 'starknet';
+import { CallData, Call } from 'starknet';
 import {
     Config,
     ChainConfig,
@@ -83,7 +83,12 @@ async function processCommand(
 
         // Use common offline transaction handler
         const operationName = `upgrade_${contractConfigName}`;
-        return handleOfflineTransaction(options, chain.name, targetAddress, 'upgrade', upgradeCalldata, operationName);
+        const calls: Call[] = [{
+            contractAddress: targetAddress,
+            entrypoint: 'upgrade',
+            calldata: upgradeCalldata
+        }];
+        return handleOfflineTransaction(options, chain.name, calls, operationName);
     }
 
     console.log(`\nUpgrading ${contractConfigName} on ${chain.name}...`);

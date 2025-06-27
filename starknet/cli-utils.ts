@@ -1,4 +1,4 @@
-'use strict';
+
 
 import { Option, Command } from 'commander';
 import { addEnvOption } from '../common/cli-utils';
@@ -26,6 +26,7 @@ export const addStarknetOptions = (program: Command, config: CliOptionConfig = {
                 .env('STARKNET_ACCOUNT_ADDRESS')
         );
     }
+
 
     if (config.offlineSupport) {
         program.addOption(

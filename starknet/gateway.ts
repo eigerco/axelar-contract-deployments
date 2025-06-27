@@ -1,4 +1,4 @@
-'use strict';
+
 
 import { Command } from 'commander';
 import { loadConfig } from '../common';
@@ -14,7 +14,7 @@ import {
     validateStarknetOptions,
     estimateGasAndDisplayArgs,
 } from './utils';
-import { Contract, CallData, byteArray, Call } from 'starknet';
+import { num, Contract, CallData, byteArray, Call } from 'starknet';
 import {
     Config,
     ChainConfig,
@@ -33,7 +33,7 @@ async function handleGasEstimation(
     calldata: any[]
 ): Promise<Record<string, never>> {
     console.log(`\nEstimating gas for ${entrypoint} on ${chain.name}...`);
-    
+
     const provider = getStarknetProvider(chain);
     const account = getStarknetAccount(options.privateKey!, options.accountAddress!, provider);
     const calls: Call[] = [{
@@ -78,13 +78,20 @@ async function callContract(
         byteArray.byteArrayFromString(payload),
     ]);
 
+    const hexCalldata = calldata.map(item => num.toHex(item));
+
     // Handle estimate mode
     if (estimate) {
-        return handleGasEstimation(chain, options, gatewayConfig.address, 'call_contract', calldata);
+        return handleGasEstimation(chain, options, gatewayConfig.address, 'call_contract', hexCalldata);
     }
 
     if (offline) {
-        return handleOfflineTransaction(options, chain.name, gatewayConfig.address, 'call_contract', calldata, 'call_contract');
+        const calls: Call[] = [{
+            contractAddress: gatewayConfig.address,
+            entrypoint: 'call_contract',
+            calldata: hexCalldata
+        }];
+        return handleOfflineTransaction(options, chain.name, calls, 'call_contract');
     }
 
     // Online execution
@@ -136,7 +143,12 @@ async function approveMessages(
     }
 
     if (offline) {
-        return handleOfflineTransaction(options, chain.name, gatewayConfig.address, 'approve_messages', calldata, 'approve_messages');
+        const calls: Call[] = [{
+            contractAddress: gatewayConfig.address,
+            entrypoint: 'approve_messages',
+            calldata
+        }];
+        return handleOfflineTransaction(options, chain.name, calls, 'approve_messages');
     }
 
     // Online execution
@@ -196,7 +208,12 @@ async function validateMessage(
     }
 
     if (offline) {
-        return handleOfflineTransaction(options, chain.name, gatewayConfig.address, 'validate_message', calldata, 'validate_message');
+        const calls: Call[] = [{
+            contractAddress: gatewayConfig.address,
+            entrypoint: 'validate_message',
+            calldata
+        }];
+        return handleOfflineTransaction(options, chain.name, calls, 'validate_message');
     }
 
     // Online execution
@@ -246,7 +263,12 @@ async function rotateSigners(config, chain, options) {
     }
 
     if (offline) {
-        return handleOfflineTransaction(options, chain.name, gatewayConfig.address, 'rotate_signers', calldata, 'rotate_signers');
+        const calls: Call[] = [{
+            contractAddress: gatewayConfig.address,
+            entrypoint: 'rotate_signers',
+            calldata
+        }];
+        return handleOfflineTransaction(options, chain.name, calls, 'rotate_signers');
     }
 
     // Online execution
@@ -343,7 +365,12 @@ async function transferOperatorship(config, chain, options) {
     }
 
     if (offline) {
-        return handleOfflineTransaction(options, chain.name, gatewayConfig.address, 'transfer_operatorship', calldata, 'transfer_operatorship');
+        const calls: Call[] = [{
+            contractAddress: gatewayConfig.address,
+            entrypoint: 'transfer_operatorship',
+            calldata
+        }];
+        return handleOfflineTransaction(options, chain.name, calls, 'transfer_operatorship');
     }
 
     // Online execution
@@ -413,7 +440,7 @@ async function main(): Promise<void> {
     callContractCmd.action(async (destinationChain, destinationContractAddress, payload, options) => {
         validateStarknetOptions(options.env, options.offline, options.privateKey, options.accountAddress);
         const config = loadConfig(options.env);
-        
+
         const chain = config.chains[STARKNET_CHAIN];
         if (!chain) {
             throw new Error(`Chain ${STARKNET_CHAIN} not found in environment ${options.env}`);
@@ -447,7 +474,7 @@ async function main(): Promise<void> {
     approveCmd.action(async (messages, proof, options) => {
         validateStarknetOptions(options.env, options.offline, options.privateKey, options.accountAddress);
         const config = loadConfig(options.env);
-        
+
         const chain = config.chains[STARKNET_CHAIN];
         if (!chain) {
             throw new Error(`Chain ${STARKNET_CHAIN} not found in environment ${options.env}`);
@@ -482,7 +509,7 @@ async function main(): Promise<void> {
     validateCmd.action(async (sourceChain, messageId, sourceAddress, payloadHash, options) => {
         validateStarknetOptions(options.env, options.offline, options.privateKey, options.accountAddress);
         const config = loadConfig(options.env);
-        
+
         const chain = config.chains[STARKNET_CHAIN];
         if (!chain) {
             throw new Error(`Chain ${STARKNET_CHAIN} not found in environment ${options.env}`);
@@ -497,12 +524,12 @@ async function main(): Promise<void> {
                 payloadHash,
             };
 
-                const result = await validateMessage(config, { ...chain, name: STARKNET_CHAIN }, cmdOptions);
-                console.log(`✅ validate-message completed for ${STARKNET_CHAIN}\n`);
-            } catch (error) {
-                console.error(`❌ validate-message failed for ${STARKNET_CHAIN}: ${error.message}\n`);
-                process.exit(1);
-            }
+            const result = await validateMessage(config, { ...chain, name: STARKNET_CHAIN }, cmdOptions);
+            console.log(`✅ validate-message completed for ${STARKNET_CHAIN}\n`);
+        } catch (error) {
+            console.error(`❌ validate-message failed for ${STARKNET_CHAIN}: ${error.message}\n`);
+            process.exit(1);
+        }
     });
 
     // Rotate signers command
@@ -517,7 +544,7 @@ async function main(): Promise<void> {
     rotateCmd.action(async (newSigners, proof, options) => {
         validateStarknetOptions(options.env, options.offline, options.privateKey, options.accountAddress);
         const config = loadConfig(options.env);
-        
+
         const chain = config.chains[STARKNET_CHAIN];
         if (!chain) {
             throw new Error(`Chain ${STARKNET_CHAIN} not found in environment ${options.env}`);
@@ -553,7 +580,7 @@ async function main(): Promise<void> {
     isApprovedCmd.action(async (sourceChain, messageId, sourceAddress, contractAddress, payloadHash, options) => {
         validateStarknetOptions(options.env, options.offline, options.privateKey, options.accountAddress, false);
         const config = loadConfig(options.env);
-        
+
         const chain = config.chains[STARKNET_CHAIN];
         if (!chain) {
             throw new Error(`Chain ${STARKNET_CHAIN} not found in environment ${options.env}`);
@@ -588,7 +615,7 @@ async function main(): Promise<void> {
     isExecutedCmd.action(async (sourceChain, messageId, options) => {
         validateStarknetOptions(options.env, options.offline, options.privateKey, options.accountAddress, false);
         const config = loadConfig(options.env);
-        
+
         const chain = config.chains[STARKNET_CHAIN];
         if (!chain) {
             throw new Error(`Chain ${STARKNET_CHAIN} not found in environment ${options.env}`);
@@ -619,7 +646,7 @@ async function main(): Promise<void> {
     transferOpCmd.action(async (newOperator, options) => {
         validateStarknetOptions(options.env, options.offline, options.privateKey, options.accountAddress);
         const config = loadConfig(options.env);
-        
+
         const chain = config.chains[STARKNET_CHAIN];
         if (!chain) {
             throw new Error(`Chain ${STARKNET_CHAIN} not found in environment ${options.env}`);
@@ -648,7 +675,7 @@ async function main(): Promise<void> {
     getOperatorCmd.action(async (options) => {
         validateStarknetOptions(options.env, options.offline, options.privateKey, options.accountAddress, false);
         const config = loadConfig(options.env);
-        
+
         const chain = config.chains[STARKNET_CHAIN];
         if (!chain) {
             throw new Error(`Chain ${STARKNET_CHAIN} not found in environment ${options.env}`);
@@ -672,7 +699,7 @@ async function main(): Promise<void> {
     getEpochCmd.action(async (options) => {
         validateStarknetOptions(options.env, options.offline, options.privateKey, options.accountAddress, false);
         const config = loadConfig(options.env);
-        
+
         const chain = config.chains[STARKNET_CHAIN];
         if (!chain) {
             throw new Error(`Chain ${STARKNET_CHAIN} not found in environment ${options.env}`);

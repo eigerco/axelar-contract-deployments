@@ -53,11 +53,13 @@ ENV=testnet  # or mainnet, devnet, stagenet
 ### Transaction Types
 - **Invoke Transactions**: Contract calls and deployments
 - **Declare Transactions**: Contract class declarations (online only)
+- **Multicall Transactions**: Execute multiple calls in a single transaction
 
 ### Contract Support
 - ✅ Contract declaration, deployment and upgrades
 - ✅ Gateway operations (call contract, approve messages, validate messages)
 - ✅ Signer rotation and operatorship management
+- ✅ Multicall support for batching operations
 - 🔄 Additional contracts (Gas Service, Operators, ITS) - *coming soon*
 
 ## 📚 Core Workflow
@@ -151,6 +153,276 @@ npx ts-node starknet/upgrade-contract.ts \
   --l2GasMaxPricePerUnit 1000000000
 ```
 
+## 🔄 Multicall Operations
+
+Execute multiple contract calls in a single transaction to save gas and improve efficiency.
+
+### Multicall Configuration
+
+Create a JSON configuration file specifying all calls to execute:
+
+```json
+{
+  "calls": [
+    {
+      "contract_address": "0x04c1d9da136846ab084ae18cf6ce7a652df7793b666a16ce46b1bf5850cc739d",
+      "entrypoint": "call_contract",
+      "calldata": ["ethereum", "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD7", "0x1234567890abcdef"]
+    },
+    {
+      "contract_address": "0x01234567890abcdef01234567890abcdef01234567890abcdef01234567890a",
+      "entrypoint": "pay_gas",
+      "calldata": ["0x1234567890abcdef1234567890abcdef12345678", "ethereum", "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD7", "100000", "0x1234567890abcdef1234567890abcdef12345678"]
+    }
+  ]
+}
+```
+
+### Online Multicall (Testnet/Devnet)
+
+```bash
+npx ts-node starknet/multicall.ts examples/multicall-example.json \
+  --env testnet \
+  --privateKey 0x... \
+  --accountAddress 0x...
+```
+
+### Offline Multicall (Mainnet)
+
+**Step 1: Estimate Gas**
+```bash
+npx ts-node starknet/multicall.ts examples/multicall-example.json \
+  --env mainnet \
+  --estimate \
+  --privateKey 0x... \
+  --accountAddress 0x...
+```
+
+**Step 2: Generate Unsigned Transaction**
+```bash
+npx ts-node starknet/multicall.ts examples/multicall-example.json \
+  --env mainnet \
+  --offline \
+  --nonce 5 \
+  --accountAddress 0x... \
+  --l1GasMaxAmount 100000 \
+  --l1GasMaxPricePerUnit 100000000000 \
+  --l2GasMaxAmount 2000000 \
+  --l2GasMaxPricePerUnit 1000000000
+```
+
+The remaining steps (sign, combine signatures, broadcast) follow the same workflow as single transactions.
+
+### Multicall Use Cases
+
+- **Gateway + Gas Service**: Call contract on another chain and pay for gas in one transaction
+- **Batch Approvals**: Approve multiple messages in a single transaction
+- **Complex Operations**: Combine governance operations with contract calls
+- **Gas Optimization**: Reduce transaction count and save on gas fees
+
+## 🏛️ Argent Multisig Operations
+
+Control and manage Argent multisig v0.2.0 accounts with comprehensive support for all multisig operations.
+
+### Get Ledger Public Key
+
+Retrieve your Ledger's public key for use as a multisig signer:
+
+```bash
+npx ts-node starknet/multisig.ts get-ledger-pubkey \
+  --ledger-path "m/44'/9004'/0'/0/0"
+```
+
+### Read Operations
+
+**Get Threshold:**
+```bash
+npx ts-node starknet/multisig.ts get-threshold \
+  --contract-address 0x... \
+  --env testnet
+```
+
+**Get Signers:**
+```bash
+npx ts-node starknet/multisig.ts get-signers \
+  --contract-address 0x... \
+  --env testnet
+```
+
+**Check if Address is Signer:**
+```bash
+npx ts-node starknet/multisig.ts is-signer \
+  --contract-address 0x... \
+  --signers 0x... \
+  --signer-type starknet \
+  --env testnet
+```
+
+### Multisig Management Operations
+
+All management operations support both online and offline modes with gas estimation.
+
+**Change Threshold:**
+```bash
+# Online
+npx ts-node starknet/multisig.ts change-threshold \
+  --contract-address 0x... \
+  --threshold 2 \
+  --env testnet \
+  --privateKey 0x... \
+  --accountAddress 0x...
+
+# Offline
+npx ts-node starknet/multisig.ts change-threshold \
+  --contract-address 0x... \
+  --threshold 2 \
+  --env mainnet \
+  --offline \
+  --nonce 5 \
+  --accountAddress 0x... \
+  --l1GasMaxAmount 50000 \
+  --l1GasMaxPricePerUnit 100000000000
+```
+
+**Add Signers:**
+```bash
+npx ts-node starknet/multisig.ts add-signers \
+  --contract-address 0x... \
+  --threshold 2 \
+  --signers 0x1234...,0x5678... \
+  --signer-type starknet \
+  --env testnet \
+  --privateKey 0x... \
+  --accountAddress 0x...
+```
+
+**Remove Signers:**
+```bash
+npx ts-node starknet/multisig.ts remove-signers \
+  --contract-address 0x... \
+  --threshold 1 \
+  --signers 0x1234... \
+  --signer-type starknet \
+  --env testnet \
+  --privateKey 0x... \
+  --accountAddress 0x...
+```
+
+**Replace Signer:**
+```bash
+npx ts-node starknet/multisig.ts replace-signer \
+  --contract-address 0x... \
+  --signer-to-remove 0x1234... \
+  --signer-to-add 0x5678... \
+  --signer-type starknet \
+  --env testnet \
+  --privateKey 0x... \
+  --accountAddress 0x...
+```
+
+### Guardian Recovery Operations
+
+Manage guardian-based account recovery for emergency situations.
+
+**Enable/Disable Guardian Recovery:**
+```bash
+npx ts-node starknet/multisig.ts toggle-escape \
+  --contract-address 0x... \
+  --is-enabled true \
+  --security-period 86400 \
+  --expiry-period 604800 \
+  --guardian 0x... \
+  --env testnet \
+  --privateKey 0x... \
+  --accountAddress 0x...
+```
+
+**Get Guardian:**
+```bash
+npx ts-node starknet/multisig.ts get-guardian \
+  --contract-address 0x... \
+  --env testnet
+```
+
+**Trigger Escape (Guardian Only):**
+```bash
+npx ts-node starknet/multisig.ts trigger-escape \
+  --contract-address 0x... \
+  --selector 0x... \
+  --calldata 0x1234,0x5678 \
+  --env testnet \
+  --privateKey 0x... \
+  --accountAddress 0x...
+```
+
+**Execute Escape (After Security Period):**
+```bash
+npx ts-node starknet/multisig.ts execute-escape \
+  --contract-address 0x... \
+  --selector 0x... \
+  --calldata 0x1234,0x5678 \
+  --env testnet \
+  --privateKey 0x... \
+  --accountAddress 0x...
+```
+
+**Cancel Escape:**
+```bash
+npx ts-node starknet/multisig.ts cancel-escape \
+  --contract-address 0x... \
+  --env testnet \
+  --privateKey 0x... \
+  --accountAddress 0x...
+```
+
+**Get Escape Status:**
+```bash
+npx ts-node starknet/multisig.ts get-escape \
+  --contract-address 0x... \
+  --env testnet
+```
+
+### Supported Signer Types
+
+- `starknet`: Standard Starknet signers (default)
+- `secp256k1`: Ethereum-compatible signers
+- `secp256r1`: P-256 curve signers
+- `eip191`: EIP-191 compliant signers
+
+### Multisig Workflow Example
+
+1. **Check Current State:**
+   ```bash
+   npx ts-node starknet/multisig.ts get-threshold --contract-address 0x... --env testnet
+   npx ts-node starknet/multisig.ts get-signers --contract-address 0x... --env testnet
+   ```
+
+2. **Generate Offline Transaction (Mainnet):**
+   ```bash
+   # Estimate gas first
+   npx ts-node starknet/multisig.ts add-signers \
+     --contract-address 0x... \
+     --threshold 2 \
+     --signers 0xNewSigner \
+     --estimate \
+     --env mainnet \
+     --privateKey 0x... \
+     --accountAddress 0x...
+   
+   # Generate unsigned transaction
+   npx ts-node starknet/multisig.ts add-signers \
+     --contract-address 0x... \
+     --threshold 2 \
+     --signers 0xNewSigner \
+     --offline \
+     --nonce 5 \
+     --accountAddress 0x... \
+     --l1GasMaxAmount 50000 \
+     --l1GasMaxPricePerUnit 100000000000
+   ```
+
+3. **Sign and broadcast following the standard offline workflow**
+
 ## 🔐 Offline Signing Workflow (Mainnet)
 
 For secure mainnet deployments, follow this complete offline signing workflow:
@@ -212,11 +484,15 @@ If using multisig accounts, combine all signatures:
 
 ```bash
 npx ts-node starknet/combine-signatures.ts \
-  starknet-offline-txs/deploy_AxelarGateway_starknet_2025-06-12T10-30-45-123Z.json \
   starknet-offline-txs/deploy_AxelarGateway_starknet_2025-06-12T10-30-45-123Z_signed.json \
-  starknet-offline-txs/deploy_AxelarGateway_starknet_another_signer_signed.json \
-  --signers 0x123... 0x456... \
-  --output combined_transaction.json
+  starknet-offline-txs/deploy_AxelarGateway_starknet_another_signer_signed.json
+# Creates: starknet-offline-txs/tx_multisig_signed_2025-06-12T10-35-22-789Z.json
+
+# Or with custom output filename
+npx ts-node starknet/combine-signatures.ts \
+  signer1_signed.json \
+  signer2_signed.json \
+  -o custom_multisig.json
 ```
 
 ### Step 5: Broadcast Transaction (Online Environment)
@@ -231,7 +507,7 @@ npx ts-node starknet/broadcast-transaction.ts \
 
 # For multisig accounts
 npx ts-node starknet/broadcast-transaction.ts \
-  combined_transaction.json \
+  starknet-offline-txs/tx_multisig_signed_2025-06-12T10-35-22-789Z.json \
   --env mainnet \
   --contract-config-name AxelarGateway
 ```
@@ -286,14 +562,13 @@ Contracts are managed through configuration names stored in the chain config. Ea
 *sign-transaction.ts:*
 - `--ledger-path`: Ledger derivation path (default: "m/44'/9004'/0'/0/0")
 - `--env`: Environment for chain ID detection
+- `--multisig`: Enable multisig mode - includes public key in signature (default: true)
 
 *combine-signatures.ts:*
-- `--signers`: Array of signer addresses corresponding to signature files
-- `--output`: Output file for combined transaction
+- `--output`: Output file for combined transaction (default: starknet-offline-txs/tx_multisig_signed_<timestamp>.json)
 
 *broadcast-transaction.ts:*
 - `--env`: Environment configuration
-- `--skip-wait`: Skip waiting for transaction confirmation
 - `--contract-config-name`: Contract config name (for deployment transactions)
 
 ## 📚 Documentation
@@ -324,6 +599,24 @@ Contracts are managed through configuration names stored in the chain config. Ea
 ### Debug Mode
 
 Add `--verbose` flag to any command for detailed logging.
+
+### Argent Multisig Debugging
+
+**Debug signer registration:**
+```bash
+npx ts-node starknet/debug-multisig-signer.ts \
+  YOUR_MULTISIG_ADDRESS \
+  YOUR_PUBLIC_KEY \
+  --env testnet
+```
+
+**Format constructor for deployment:**
+```bash
+npx ts-node starknet/format-multisig-constructor.ts \
+  1 \
+  0x1234...pubkey1 \
+  0x5678...pubkey2
+```
 
 ## 📚 Additional Resources
 

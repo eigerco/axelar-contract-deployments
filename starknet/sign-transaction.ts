@@ -1,7 +1,7 @@
-'use strict';
+
 
 import { Command } from 'commander';
-import { hash, stark, constants, Account, ec, CallData } from 'starknet';
+import { hash, stark, constants, encode, ETransactionVersion3, EDataAvailabilityMode, Calldata } from 'starknet';
 import * as fs from 'fs';
 import * as path from 'path';
 import { loadConfig } from '../common';
@@ -20,7 +20,8 @@ import { UnsignedTransaction } from './types';
 async function signWithLedger(
     transactionFile: string,
     ledgerPath: string,
-    chainId: constants.StarknetChainId
+    chainId: constants.StarknetChainId,
+    multisig: boolean
 ): Promise<void> {
     console.log('📱 Initializing Ledger connection...');
 
@@ -34,13 +35,8 @@ async function signWithLedger(
     console.log(`  Nonce: ${transaction.nonce}`);
 
     if (transaction.type === 'INVOKE') {
-        console.log(`  Calls: ${transaction.calls.length}`);
-        transaction.calls.forEach((call, i) => {
-            console.log(`    Call ${i + 1}:`);
-            console.log(`      Contract: ${call.contractAddress}`);
-            console.log(`      Entrypoint: ${call.entrypoint}`);
-            console.log(`      Calldata length: ${call.calldata.length}`);
-        });
+        console.log(`  Calldata length: ${transaction.calldata.length}`);
+        // console.log(`  Calldata: ${transaction.calldata.slice(0, 10).join(', ')}${transaction.calldata.length > 10 ? '...' : ''}`);
     }
 
     let transport;
@@ -58,23 +54,52 @@ async function signWithLedger(
 
         // Get public key for verification
         console.log(`\n🔑 Using derivation path: ${ledgerPath}`);
-        const pubKey = await app.getPubKey(ledgerPath);
-        console.log(`Public key: 0x${Buffer.from(pubKey.publicKey).toString('hex')}`);
+        const { starkKey } = await app.getStarkKey(ledgerPath, false);
+        const publicKeyHex = encode.addHexPrefix(encode.buf2hex(starkKey));
+        console.log(`Public key: ${publicKeyHex}`);
 
         // Sign the transaction hash
         console.log('\n✍️  Please review and sign the transaction on your Ledger device...');
         console.log('⚠️  Note: You will see the transaction hash on your device screen.');
 
-        const signature = await app.signTx(ledgerPath, transaction.calls,
-            {
-                accountAddress: transaction.sender_address,
-                tip: transaction.tip,
-                resourceBounds: transaction.resource_bounds,
-                chainId: chainId,
-                nonce: transaction.nonce, // TODO: Set correct one by querying contract. Will it work if a lot of calls are made to the contract?
-                nonceDataAvailabilityMode: transaction.nonce_data_availability_mode,
-                feeDataAvailabilityMode: transaction.fee_data_availability_mode,
+        // Check if this is a multicall transaction
+        if (transaction.multicall_info && transaction.multicall_info.length > 0) {
+            console.log('\n📋 Multicall Transaction Details:');
+            console.log(`Number of calls: ${transaction.multicall_info.length}`);
+            transaction.multicall_info.forEach((call, index) => {
+                console.log(`\nCall ${index + 1}:`);
+                console.log(`  Contract: ${call.contract_address}`);
+                console.log(`  Function: ${call.entrypoint}`);
+                console.log(`  Arguments: ${call.calldata.length} parameters`);
             });
+        } else {
+            // Single call transaction
+            if (!transaction.entrypoint_name || !transaction.contract_address) {
+                throw new Error('Transaction missing original entrypoint_name or contract_address required for Ledger signing');
+            }
+            console.log('\n📋 Transaction Details:');
+            console.log(`  Contract: ${transaction.contract_address}`);
+            console.log(`  Function: ${transaction.entrypoint_name}`);
+        }
+
+        // Calculate and log the transaction hash for debugging
+        const txHash = hash.calculateInvokeTransactionHash({
+            senderAddress: transaction.sender_address,
+            version: ETransactionVersion3.V3,
+            compiledCalldata: transaction.calldata as Calldata,
+            chainId: chainId,
+            nonce: transaction.nonce,
+            resourceBounds: transaction.resource_bounds,
+            tip: transaction.tip,
+            paymasterData: transaction.paymaster_data,
+            accountDeploymentData: transaction.account_deployment_data,
+            nonceDataAvailabilityMode: stark.intDAM(transaction.nonce_data_availability_mode as EDataAvailabilityMode),
+            feeDataAvailabilityMode: stark.intDAM(transaction.fee_data_availability_mode as EDataAvailabilityMode),
+        });
+
+        console.log(`\n🔍 Transaction hash to be signed: ${txHash}`);
+
+        const signature = await app.signHash(ledgerPath, txHash);
 
         // Check if signature contains an error
         if (signature.errorMessage && signature.returnCode !== 36864 && signature.errorMessage !== "No error") {
@@ -86,22 +111,39 @@ async function signWithLedger(
         // Create signed transaction object
         // Handle different signature formats from Ledger
         let signatureArray: string[];
-        if (signature.r && signature.s && signature.h) {
+        if (signature.r && signature.s) {
             // Convert Buffer byte arrays to hex strings (field elements)
-            if (!Buffer.isBuffer(signature.h) || !Buffer.isBuffer(signature.s) || !Buffer.isBuffer(signature.r)) {
-                throw new Error('Unexpected signature format - H, S or R are not buffers');
+            let r: string, s: string;
+
+            // Handle both Buffer and direct data array formats
+            if (Buffer.isBuffer(signature.r) && Buffer.isBuffer(signature.s)) {
+                r = `0x${signature.r.toString('hex')}`;
+                s = `0x${signature.s.toString('hex')}`;
+            } else if (signature.r.data && signature.s.data) {
+                // Handle the format {"type":"Buffer","data":[...]}
+                r = `0x${Buffer.from(signature.r.data).toString('hex')}`;
+                s = `0x${Buffer.from(signature.s.data).toString('hex')}`;
+            } else {
+                throw new Error('Unexpected signature format - R and S are not in expected format');
             }
 
-            // Convert to hex strings with 0x prefix
-            const h = `0x${signature.h.toString('hex')}`;
-            const r = `0x${signature.r.toString('hex')}`;
-            const s = `0x${signature.s.toString('hex')}`;
+            // Ensure consistent formatting using stark.signatureToHexArray
+            const formattedSignature = stark.signatureToHexArray([r, s]);
 
-            signatureArray = [r, s];
-            console.log(`\n📝 Signature:`);
-            console.log(`  TX Hash: ${h}`);
-            console.log(`  R: ${r}`);
-            console.log(`  S: ${s}`);
+            if (multisig) {
+                // For multisig accounts, include public key in signature
+                signatureArray = ['1', '0', publicKeyHex, ...formattedSignature];
+                console.log(`\n📝 Signature (Multisig format):`);
+                console.log(`  Public Key: ${publicKeyHex}`);
+                console.log(`  R: ${formattedSignature[0]}`);
+                console.log(`  S: ${formattedSignature[1]}`);
+            } else {
+                // For single-signature accounts
+                signatureArray = formattedSignature;
+                console.log(`\n📝 Signature:`);
+                console.log(`  R: ${formattedSignature[0]}`);
+                console.log(`  S: ${formattedSignature[1]}`);
+            }
         } else {
             throw new Error(`Unexpected signature format: ${JSON.stringify(signature)}`);
         }
@@ -120,8 +162,12 @@ async function signWithLedger(
         console.log(`\n💾 Signed transaction saved to: ${signedFile}`);
 
         console.log('\n📋 Next steps:');
-        console.log('1. For single-signature accounts: Use broadcast-transaction.ts to submit');
-        console.log('2. For multisig accounts: Collect more signatures with combine-signatures.ts');
+        if (multisig) {
+            console.log('1. If more signatures needed: Use combine-signatures.ts to combine with other signers');
+            console.log('2. If threshold met: Use broadcast-transaction.ts to submit the transaction');
+        } else {
+            console.log('Use broadcast-transaction.ts to submit the signed transaction');
+        }
 
     } catch (error: any) {
         if (error.message?.includes('0x6985')) {
@@ -147,8 +193,9 @@ async function main(): Promise<void> {
         .description('Sign Starknet transaction with Ledger hardware wallet')
         .version('1.0.0')
         .argument('<transactionFile>', 'path to unsigned transaction JSON file')
-        .option('-p, --ledger-path <path>', 'Ledger derivation path', "m/44'/9004'/0'/0/0")
+        .requiredOption('-p, --ledger-path <path>', 'Ledger derivation path (e.g. "m/2645\'/1195502025\'/1148870696\'/1\'/0\'/0")')
         .option('-e, --env <env>', 'environment (mainnet, testnet, devnet)', 'mainnet')
+        .option('--multisig', 'enable multisig mode (include public key in signature)', true)
         .parse();
 
     const [transactionFile] = program.args;
@@ -185,7 +232,7 @@ async function main(): Promise<void> {
     }
 
     try {
-        await signWithLedger(transactionFile, options.ledgerPath, chainId);
+        await signWithLedger(transactionFile, options.ledgerPath, chainId, options.multisig);
     } catch (error: any) {
         console.error('\n❌ Signing failed:', error.message);
         process.exit(1);
