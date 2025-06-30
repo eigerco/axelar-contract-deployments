@@ -14,13 +14,29 @@ import {
     validateStarknetOptions,
     estimateGasAndDisplayArgs,
 } from './utils';
-import { num, Contract, CallData, byteArray, Call } from 'starknet';
+import { num, Contract, CallData, byteArray, Call, Provider, Account } from 'starknet';
 import {
     Config,
     ChainConfig,
     GatewayCommandOptions,
     OfflineTransactionResult
 } from './types';
+
+/**
+ * Helper function to get gateway contract instance with ABI
+ */
+async function getGatewayContract(
+    provider: Provider,
+    address: string,
+    account?: Account
+): Promise<Contract> {
+    const { abi } = await provider.getClassAt(address);
+    const contract = new Contract(abi, address, provider);
+    if (account) {
+        contract.connect(account);
+    }
+    return contract;
+}
 
 /**
  * Common function to handle gas estimation for gateway operations
@@ -96,11 +112,7 @@ async function callContract(
 
     // Online execution
     const account = getStarknetAccount(privateKey, accountAddress, provider);
-
-    // Fetch gateway contract ABI from the blockchain
-    const { abi } = await provider.getClassAt(gatewayConfig.address);
-    const gatewayContract = new Contract(abi, gatewayConfig.address, provider);
-    gatewayContract.connect(account);
+    const gatewayContract = await getGatewayContract(provider, gatewayConfig.address, account);
 
     const response = await gatewayContract.call_contract(calldata);
     await account.waitForTransaction(response.transaction_hash);
@@ -154,11 +166,7 @@ async function approveMessages(
     // Online execution
     const provider = getStarknetProvider(chain);
     const account = getStarknetAccount(privateKey, accountAddress, provider);
-
-    // Fetch gateway contract ABI from the blockchain
-    const { abi } = await provider.getClassAt(gatewayConfig.address);
-    const gatewayContract = new Contract(abi, gatewayConfig.address, provider);
-    gatewayContract.connect(account);
+    const gatewayContract = await getGatewayContract(provider, gatewayConfig.address, account);
 
     const response = await gatewayContract.approve_messages(calldata);
     await account.waitForTransaction(response.transaction_hash);
@@ -219,11 +227,7 @@ async function validateMessage(
     // Online execution
     const provider = getStarknetProvider(chain);
     const account = getStarknetAccount(privateKey, accountAddress, provider);
-
-    // Fetch gateway contract ABI from the blockchain
-    const { abi } = await provider.getClassAt(gatewayConfig.address);
-    const gatewayContract = new Contract(abi, gatewayConfig.address, provider);
-    gatewayContract.connect(account);
+    const gatewayContract = await getGatewayContract(provider, gatewayConfig.address, account);
 
     const response = await gatewayContract.validate_message(calldata);
     await account.waitForTransaction(response.transaction_hash);
@@ -274,9 +278,7 @@ async function rotateSigners(config, chain, options) {
     // Online execution
     const provider = getStarknetProvider(chain);
     const account = getStarknetAccount(privateKey, accountAddress, provider);
-
-    const gatewayContract = new Contract([], gatewayConfig.address, provider);
-    gatewayContract.connect(account);
+    const gatewayContract = await getGatewayContract(provider, gatewayConfig.address, account);
 
     const response = await gatewayContract.rotate_signers(calldata);
     await account.waitForTransaction(response.transaction_hash);
@@ -303,7 +305,7 @@ async function isMessageApproved(config, chain, options) {
         throw new Error('AxelarGateway contract not found in configuration');
     }
 
-    const gatewayContract = new Contract([], gatewayConfig.address, provider);
+    const gatewayContract = await getGatewayContract(provider, gatewayConfig.address);
 
     const result = await gatewayContract.is_message_approved(
         byteArray.byteArrayFromString(sourceChain),
@@ -330,7 +332,7 @@ async function isMessageExecuted(config, chain, options) {
         throw new Error('AxelarGateway contract not found in configuration');
     }
 
-    const gatewayContract = new Contract([], gatewayConfig.address, provider);
+    const gatewayContract = await getGatewayContract(provider, gatewayConfig.address);
 
     const result = await gatewayContract.is_message_executed(
         byteArray.byteArrayFromString(sourceChain),
@@ -350,6 +352,8 @@ async function transferOperatorship(config, chain, options) {
         estimate,
     } = options;
 
+    const provider = getStarknetProvider(chain);
+
     const gatewayConfig = getContractConfig(config, chain.name, 'AxelarGateway');
     if (!gatewayConfig.address) {
         throw new Error('AxelarGateway contract not found in configuration');
@@ -359,28 +363,27 @@ async function transferOperatorship(config, chain, options) {
 
     const calldata = CallData.compile([newOperator]);
 
+    const hexCalldata = calldata.map(item => num.toHex(item));
+
     // Handle estimate mode
     if (estimate) {
-        return handleGasEstimation(chain, options, gatewayConfig.address, 'transfer_operatorship', calldata);
+        return handleGasEstimation(chain, options, gatewayConfig.address, 'transfer_operatorship', hexCalldata);
     }
 
     if (offline) {
         const calls: Call[] = [{
             contractAddress: gatewayConfig.address,
             entrypoint: 'transfer_operatorship',
-            calldata
+            calldata: hexCalldata
         }];
         return handleOfflineTransaction(options, chain.name, calls, 'transfer_operatorship');
     }
 
     // Online execution
-    const provider = getStarknetProvider(chain);
     const account = getStarknetAccount(privateKey, accountAddress, provider);
+    const gatewayContract = await getGatewayContract(provider, gatewayConfig.address, account);
 
-    const gatewayContract = new Contract([], gatewayConfig.address, provider);
-    gatewayContract.connect(account);
-
-    const response = await gatewayContract.transfer_operatorship(newOperator);
+    const response = await gatewayContract.transfer_operatorship(calldata);
     await account.waitForTransaction(response.transaction_hash);
 
     console.log(`Operatorship transferred successfully!`);
@@ -397,7 +400,7 @@ async function getOperator(config, chain, options) {
         throw new Error('AxelarGateway contract not found in configuration');
     }
 
-    const gatewayContract = new Contract([], gatewayConfig.address, provider);
+    const gatewayContract = await getGatewayContract(provider, gatewayConfig.address);
 
     const operator = await gatewayContract.operator();
     console.log(`Current operator: ${operator}`);
@@ -412,7 +415,7 @@ async function getEpoch(config, chain, options) {
         throw new Error('AxelarGateway contract not found in configuration');
     }
 
-    const gatewayContract = new Contract([], gatewayConfig.address, provider);
+    const gatewayContract = await getGatewayContract(provider, gatewayConfig.address);
 
     const epoch = await gatewayContract.epoch();
     console.log(`Current epoch: ${epoch}`);
