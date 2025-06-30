@@ -144,21 +144,38 @@ async function approveMessages(
 
     console.log(`Approving ${messages.length} messages on ${chain.name}`);
 
+    // Format messages array with ByteArray conversions
+    const formattedMessages = messages.map(msg => ({
+        source_chain: byteArray.byteArrayFromString(msg.source_chain),
+        message_id: byteArray.byteArrayFromString(msg.message_id),
+        source_address: byteArray.byteArrayFromString(msg.source_address),
+        contract_address: msg.contract_address,
+        payload_hash: msg.payload_hash
+    }));
+
+    // Format proof with nested structures
+    const formattedProof = {
+        signers: proof.signers, // WeightedSigners struct
+        signatures: proof.signatures // Array<Array<u8>>
+    };
+
     const calldata = CallData.compile([
-        messages, // Array<Message>
-        proof, // Proof
+        formattedMessages,
+        formattedProof
     ]);
+
+    const hexCalldata = calldata.map(item => num.toHex(item));
 
     // Handle estimate mode
     if (estimate) {
-        return handleGasEstimation(chain, options, gatewayConfig.address, 'approve_messages', calldata);
+        return handleGasEstimation(chain, options, gatewayConfig.address, 'approve_messages', hexCalldata);
     }
 
     if (offline) {
         const calls: Call[] = [{
             contractAddress: gatewayConfig.address,
             entrypoint: 'approve_messages',
-            calldata
+            calldata: hexCalldata
         }];
         return handleOfflineTransaction(options, chain.name, calls, 'approve_messages');
     }
@@ -168,7 +185,7 @@ async function approveMessages(
     const account = getStarknetAccount(privateKey, accountAddress, provider);
     const gatewayContract = await getGatewayContract(provider, gatewayConfig.address, account);
 
-    const response = await gatewayContract.approve_messages(calldata);
+    const response = await gatewayContract.approve_messages(formattedMessages, formattedProof);
     await account.waitForTransaction(response.transaction_hash);
 
     console.log(`Messages approved successfully!`);
@@ -210,16 +227,18 @@ async function validateMessage(
         payloadHash, // u256
     ]);
 
+    const hexCalldata = calldata.map(item => num.toHex(item));
+
     // Handle estimate mode
     if (estimate) {
-        return handleGasEstimation(chain, options, gatewayConfig.address, 'validate_message', calldata);
+        return handleGasEstimation(chain, options, gatewayConfig.address, 'validate_message', hexCalldata);
     }
 
     if (offline) {
         const calls: Call[] = [{
             contractAddress: gatewayConfig.address,
             entrypoint: 'validate_message',
-            calldata
+            calldata: hexCalldata
         }];
         return handleOfflineTransaction(options, chain.name, calls, 'validate_message');
     }
@@ -238,7 +257,11 @@ async function validateMessage(
     return response;
 }
 
-async function rotateSigners(config, chain, options) {
+async function rotateSigners(
+    config: Config,
+    chain: ChainConfig & { name: string },
+    options: GatewayCommandOptions
+): Promise<any | OfflineTransactionResult> {
     const {
         privateKey,
         accountAddress,
@@ -256,21 +279,29 @@ async function rotateSigners(config, chain, options) {
     console.log(`Rotating signers on ${chain.name}`);
     console.log(`New signers: ${JSON.stringify(newSigners)}`);
 
+    // Format proof with nested structures (newSigners is already properly structured)
+    const formattedProof = {
+        signers: proof.signers, // WeightedSigners struct
+        signatures: proof.signatures // Array<Array<u8>>
+    };
+
     const calldata = CallData.compile([
-        newSigners, // WeightedSigners
-        proof, // Proof
+        newSigners, // WeightedSigners - already properly structured
+        formattedProof
     ]);
+
+    const hexCalldata = calldata.map(item => num.toHex(item));
 
     // Handle estimate mode
     if (estimate) {
-        return handleGasEstimation(chain, options, gatewayConfig.address, 'rotate_signers', calldata);
+        return handleGasEstimation(chain, options, gatewayConfig.address, 'rotate_signers', hexCalldata);
     }
 
     if (offline) {
         const calls: Call[] = [{
             contractAddress: gatewayConfig.address,
             entrypoint: 'rotate_signers',
-            calldata
+            calldata: hexCalldata
         }];
         return handleOfflineTransaction(options, chain.name, calls, 'rotate_signers');
     }
@@ -280,7 +311,7 @@ async function rotateSigners(config, chain, options) {
     const account = getStarknetAccount(privateKey, accountAddress, provider);
     const gatewayContract = await getGatewayContract(provider, gatewayConfig.address, account);
 
-    const response = await gatewayContract.rotate_signers(calldata);
+    const response = await gatewayContract.rotate_signers(newSigners, formattedProof);
     await account.waitForTransaction(response.transaction_hash);
 
     console.log(`Signers rotated successfully!`);
@@ -289,7 +320,7 @@ async function rotateSigners(config, chain, options) {
     return response;
 }
 
-async function isMessageApproved(config, chain, options) {
+async function isMessageApproved(config: Config, chain: ChainConfig & { name: string }, options: GatewayCommandOptions): Promise<boolean> {
     const {
         sourceChain,
         messageId,
@@ -319,7 +350,7 @@ async function isMessageApproved(config, chain, options) {
     return result;
 }
 
-async function isMessageExecuted(config, chain, options) {
+async function isMessageExecuted(config: Config, chain: ChainConfig & { name: string }, options: GatewayCommandOptions): Promise<boolean> {
     const {
         sourceChain,
         messageId,
@@ -343,7 +374,11 @@ async function isMessageExecuted(config, chain, options) {
     return result;
 }
 
-async function transferOperatorship(config, chain, options) {
+async function transferOperatorship(
+    config: Config,
+    chain: ChainConfig & { name: string },
+    options: GatewayCommandOptions
+): Promise<any | OfflineTransactionResult> {
     const {
         privateKey,
         accountAddress,
@@ -363,14 +398,14 @@ async function transferOperatorship(config, chain, options) {
 
     const calldata = CallData.compile([newOperator]);
 
-    const hexCalldata = calldata.map(item => num.toHex(item));
-
     // Handle estimate mode
     if (estimate) {
+        const hexCalldata = calldata.map(item => num.toHex(item));
         return handleGasEstimation(chain, options, gatewayConfig.address, 'transfer_operatorship', hexCalldata);
     }
 
     if (offline) {
+        const hexCalldata = calldata.map(item => num.toHex(item));
         const calls: Call[] = [{
             contractAddress: gatewayConfig.address,
             entrypoint: 'transfer_operatorship',
@@ -392,7 +427,7 @@ async function transferOperatorship(config, chain, options) {
     return response;
 }
 
-async function getOperator(config, chain, options) {
+async function getOperator(config: Config, chain: ChainConfig & { name: string }, options: GatewayCommandOptions): Promise<string> {
     const provider = getStarknetProvider(chain);
 
     const gatewayConfig = getContractConfig(config, chain.name, 'AxelarGateway');
@@ -407,7 +442,7 @@ async function getOperator(config, chain, options) {
     return operator;
 }
 
-async function getEpoch(config, chain, options) {
+async function getEpoch(config: Config, chain: ChainConfig & { name: string }, options: GatewayCommandOptions): Promise<string> {
     const provider = getStarknetProvider(chain);
 
     const gatewayConfig = getContractConfig(config, chain.name, 'AxelarGateway');

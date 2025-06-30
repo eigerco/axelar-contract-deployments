@@ -287,6 +287,8 @@ export interface GatewayCommandOptions extends StarknetCommandOptions {
     sourceAddress?: string;
     /** Hash of the payload */
     payloadHash?: string;
+    /** Contract address for message approval checks */
+    contractAddress?: string;
     /** New operator address for transfers */
     newOperator?: string;
     /** Messages for approval */
