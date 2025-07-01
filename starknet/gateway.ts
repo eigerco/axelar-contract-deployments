@@ -14,7 +14,7 @@ import {
     validateStarknetOptions,
     estimateGasAndDisplayArgs,
 } from './utils';
-import { num, Contract, CallData, byteArray, Call, Provider, Account } from 'starknet';
+import { uint256, num, Contract, CallData, byteArray, Call, Provider, Account } from 'starknet';
 import {
     Config,
     ChainConfig,
@@ -144,19 +144,24 @@ async function approveMessages(
 
     console.log(`Approving ${messages.length} messages on ${chain.name}`);
 
-    // Format messages array with ByteArray conversions
     const formattedMessages = messages.map(msg => ({
         source_chain: byteArray.byteArrayFromString(msg.source_chain),
         message_id: byteArray.byteArrayFromString(msg.message_id),
         source_address: byteArray.byteArrayFromString(msg.source_address),
         contract_address: msg.contract_address,
-        payload_hash: msg.payload_hash
+        payload_hash: uint256.bnToUint256(msg.payload_hash)
     }));
 
-    // Format proof with nested structures
     const formattedProof = {
-        signers: proof.signers, // WeightedSigners struct
-        signatures: proof.signatures // Array<Array<u8>>
+        signers: {
+            signers: proof.signers.signers.map(signer => ({
+                signer: signer.signer,
+                weight: signer.weight
+            })),
+            threshold: proof.signers.threshold,
+            nonce: uint256.bnToUint256(proof.signers.nonce)
+        },
+        signatures: proof.signatures
     };
 
     const calldata = CallData.compile([
@@ -185,7 +190,8 @@ async function approveMessages(
     const account = getStarknetAccount(privateKey, accountAddress, provider);
     const gatewayContract = await getGatewayContract(provider, gatewayConfig.address, account);
 
-    const response = await gatewayContract.approve_messages(formattedMessages, formattedProof);
+    console.log("KOR", calldata);
+    const response = await gatewayContract.approve_messages(calldata);
     await account.waitForTransaction(response.transaction_hash);
 
     console.log(`Messages approved successfully!`);
