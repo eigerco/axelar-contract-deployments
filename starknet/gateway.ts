@@ -230,7 +230,7 @@ async function validateMessage(
         byteArray.byteArrayFromString(sourceChain),
         byteArray.byteArrayFromString(messageId),
         byteArray.byteArrayFromString(sourceAddress),
-        payloadHash, // u256
+        uint256.bnToUint256(payloadHash), // u256
     ]);
 
     const hexCalldata = calldata.map(item => num.toHex(item));
@@ -344,13 +344,15 @@ async function isMessageApproved(config: Config, chain: ChainConfig & { name: st
 
     const gatewayContract = await getGatewayContract(provider, gatewayConfig.address);
 
-    const result = await gatewayContract.is_message_approved(
+    const calldata = CallData.compile([
         byteArray.byteArrayFromString(sourceChain),
         byteArray.byteArrayFromString(messageId),
         byteArray.byteArrayFromString(sourceAddress),
         contractAddress, // ContractAddress
-        payloadHash, // u256
-    );
+        uint256.bnToUint256(payloadHash), // u256
+    ]);
+
+    const result = await gatewayContract.is_message_approved(calldata);
 
     console.log(`Message approved status: ${result}`);
     return result;
@@ -371,10 +373,12 @@ async function isMessageExecuted(config: Config, chain: ChainConfig & { name: st
 
     const gatewayContract = await getGatewayContract(provider, gatewayConfig.address);
 
-    const result = await gatewayContract.is_message_executed(
+    const calldata = CallData.compile([
         byteArray.byteArrayFromString(sourceChain),
         byteArray.byteArrayFromString(messageId),
-    );
+    ]);
+
+    const result = await gatewayContract.is_message_executed(calldata);
 
     console.log(`Message executed status: ${result}`);
     return result;
@@ -444,8 +448,9 @@ async function getOperator(config: Config, chain: ChainConfig & { name: string }
     const gatewayContract = await getGatewayContract(provider, gatewayConfig.address);
 
     const operator = await gatewayContract.operator();
-    console.log(`Current operator: ${operator}`);
-    return operator;
+    const operatorHex = num.toHex(operator);
+    console.log(`Current operator: ${operatorHex}`);
+    return operatorHex;
 }
 
 async function getEpoch(config: Config, chain: ChainConfig & { name: string }, options: GatewayCommandOptions): Promise<string> {
