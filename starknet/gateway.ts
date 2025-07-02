@@ -14,13 +14,29 @@ import {
     validateStarknetOptions,
     estimateGasAndDisplayArgs,
 } from './utils';
-import { num, Contract, CallData, byteArray, Call } from 'starknet';
+import { uint256, num, Contract, CallData, byteArray, Call, Provider, Account } from 'starknet';
 import {
     Config,
     ChainConfig,
     GatewayCommandOptions,
     OfflineTransactionResult
 } from './types';
+
+/**
+ * Helper function to get gateway contract instance with ABI
+ */
+async function getGatewayContract(
+    provider: Provider,
+    address: string,
+    account?: Account
+): Promise<Contract> {
+    const { abi } = await provider.getClassAt(address);
+    const contract = new Contract(abi, address, provider);
+    if (account) {
+        contract.connect(account);
+    }
+    return contract;
+}
 
 /**
  * Common function to handle gas estimation for gateway operations
@@ -96,11 +112,7 @@ async function callContract(
 
     // Online execution
     const account = getStarknetAccount(privateKey, accountAddress, provider);
-
-    // Fetch gateway contract ABI from the blockchain
-    const { abi } = await provider.getClassAt(gatewayConfig.address);
-    const gatewayContract = new Contract(abi, gatewayConfig.address, provider);
-    gatewayContract.connect(account);
+    const gatewayContract = await getGatewayContract(provider, gatewayConfig.address, account);
 
     const response = await gatewayContract.call_contract(calldata);
     await account.waitForTransaction(response.transaction_hash);
@@ -132,21 +144,43 @@ async function approveMessages(
 
     console.log(`Approving ${messages.length} messages on ${chain.name}`);
 
+    const formattedMessages = messages.map(msg => ({
+        source_chain: byteArray.byteArrayFromString(msg.source_chain),
+        message_id: byteArray.byteArrayFromString(msg.message_id),
+        source_address: byteArray.byteArrayFromString(msg.source_address),
+        contract_address: msg.contract_address,
+        payload_hash: uint256.bnToUint256(msg.payload_hash)
+    }));
+
+    const formattedProof = {
+        signers: {
+            signers: proof.signers.signers.map(signer => ({
+                signer: signer.signer,
+                weight: signer.weight
+            })),
+            threshold: proof.signers.threshold,
+            nonce: uint256.bnToUint256(proof.signers.nonce)
+        },
+        signatures: proof.signatures
+    };
+
     const calldata = CallData.compile([
-        messages, // Array<Message>
-        proof, // Proof
+        formattedMessages,
+        formattedProof
     ]);
+
+    const hexCalldata = calldata.map(item => num.toHex(item));
 
     // Handle estimate mode
     if (estimate) {
-        return handleGasEstimation(chain, options, gatewayConfig.address, 'approve_messages', calldata);
+        return handleGasEstimation(chain, options, gatewayConfig.address, 'approve_messages', hexCalldata);
     }
 
     if (offline) {
         const calls: Call[] = [{
             contractAddress: gatewayConfig.address,
             entrypoint: 'approve_messages',
-            calldata
+            calldata: hexCalldata
         }];
         return handleOfflineTransaction(options, chain.name, calls, 'approve_messages');
     }
@@ -154,12 +188,9 @@ async function approveMessages(
     // Online execution
     const provider = getStarknetProvider(chain);
     const account = getStarknetAccount(privateKey, accountAddress, provider);
+    const gatewayContract = await getGatewayContract(provider, gatewayConfig.address, account);
 
-    // Fetch gateway contract ABI from the blockchain
-    const { abi } = await provider.getClassAt(gatewayConfig.address);
-    const gatewayContract = new Contract(abi, gatewayConfig.address, provider);
-    gatewayContract.connect(account);
-
+    console.log("KOR", calldata);
     const response = await gatewayContract.approve_messages(calldata);
     await account.waitForTransaction(response.transaction_hash);
 
@@ -199,19 +230,21 @@ async function validateMessage(
         byteArray.byteArrayFromString(sourceChain),
         byteArray.byteArrayFromString(messageId),
         byteArray.byteArrayFromString(sourceAddress),
-        payloadHash, // u256
+        uint256.bnToUint256(payloadHash), // u256
     ]);
+
+    const hexCalldata = calldata.map(item => num.toHex(item));
 
     // Handle estimate mode
     if (estimate) {
-        return handleGasEstimation(chain, options, gatewayConfig.address, 'validate_message', calldata);
+        return handleGasEstimation(chain, options, gatewayConfig.address, 'validate_message', hexCalldata);
     }
 
     if (offline) {
         const calls: Call[] = [{
             contractAddress: gatewayConfig.address,
             entrypoint: 'validate_message',
-            calldata
+            calldata: hexCalldata
         }];
         return handleOfflineTransaction(options, chain.name, calls, 'validate_message');
     }
@@ -219,11 +252,7 @@ async function validateMessage(
     // Online execution
     const provider = getStarknetProvider(chain);
     const account = getStarknetAccount(privateKey, accountAddress, provider);
-
-    // Fetch gateway contract ABI from the blockchain
-    const { abi } = await provider.getClassAt(gatewayConfig.address);
-    const gatewayContract = new Contract(abi, gatewayConfig.address, provider);
-    gatewayContract.connect(account);
+    const gatewayContract = await getGatewayContract(provider, gatewayConfig.address, account);
 
     const response = await gatewayContract.validate_message(calldata);
     await account.waitForTransaction(response.transaction_hash);
@@ -234,7 +263,11 @@ async function validateMessage(
     return response;
 }
 
-async function rotateSigners(config, chain, options) {
+async function rotateSigners(
+    config: Config,
+    chain: ChainConfig & { name: string },
+    options: GatewayCommandOptions
+): Promise<any | OfflineTransactionResult> {
     const {
         privateKey,
         accountAddress,
@@ -252,21 +285,29 @@ async function rotateSigners(config, chain, options) {
     console.log(`Rotating signers on ${chain.name}`);
     console.log(`New signers: ${JSON.stringify(newSigners)}`);
 
+    // Format proof with nested structures (newSigners is already properly structured)
+    const formattedProof = {
+        signers: proof.signers, // WeightedSigners struct
+        signatures: proof.signatures // Array<Array<u8>>
+    };
+
     const calldata = CallData.compile([
-        newSigners, // WeightedSigners
-        proof, // Proof
+        newSigners, // WeightedSigners - already properly structured
+        formattedProof
     ]);
+
+    const hexCalldata = calldata.map(item => num.toHex(item));
 
     // Handle estimate mode
     if (estimate) {
-        return handleGasEstimation(chain, options, gatewayConfig.address, 'rotate_signers', calldata);
+        return handleGasEstimation(chain, options, gatewayConfig.address, 'rotate_signers', hexCalldata);
     }
 
     if (offline) {
         const calls: Call[] = [{
             contractAddress: gatewayConfig.address,
             entrypoint: 'rotate_signers',
-            calldata
+            calldata: hexCalldata
         }];
         return handleOfflineTransaction(options, chain.name, calls, 'rotate_signers');
     }
@@ -274,11 +315,9 @@ async function rotateSigners(config, chain, options) {
     // Online execution
     const provider = getStarknetProvider(chain);
     const account = getStarknetAccount(privateKey, accountAddress, provider);
+    const gatewayContract = await getGatewayContract(provider, gatewayConfig.address, account);
 
-    const gatewayContract = new Contract([], gatewayConfig.address, provider);
-    gatewayContract.connect(account);
-
-    const response = await gatewayContract.rotate_signers(calldata);
+    const response = await gatewayContract.rotate_signers(newSigners, formattedProof);
     await account.waitForTransaction(response.transaction_hash);
 
     console.log(`Signers rotated successfully!`);
@@ -287,7 +326,7 @@ async function rotateSigners(config, chain, options) {
     return response;
 }
 
-async function isMessageApproved(config, chain, options) {
+async function isMessageApproved(config: Config, chain: ChainConfig & { name: string }, options: GatewayCommandOptions): Promise<boolean> {
     const {
         sourceChain,
         messageId,
@@ -303,21 +342,23 @@ async function isMessageApproved(config, chain, options) {
         throw new Error('AxelarGateway contract not found in configuration');
     }
 
-    const gatewayContract = new Contract([], gatewayConfig.address, provider);
+    const gatewayContract = await getGatewayContract(provider, gatewayConfig.address);
 
-    const result = await gatewayContract.is_message_approved(
+    const calldata = CallData.compile([
         byteArray.byteArrayFromString(sourceChain),
         byteArray.byteArrayFromString(messageId),
         byteArray.byteArrayFromString(sourceAddress),
         contractAddress, // ContractAddress
-        payloadHash, // u256
-    );
+        uint256.bnToUint256(payloadHash), // u256
+    ]);
+
+    const result = await gatewayContract.is_message_approved(calldata);
 
     console.log(`Message approved status: ${result}`);
     return result;
 }
 
-async function isMessageExecuted(config, chain, options) {
+async function isMessageExecuted(config: Config, chain: ChainConfig & { name: string }, options: GatewayCommandOptions): Promise<boolean> {
     const {
         sourceChain,
         messageId,
@@ -330,18 +371,24 @@ async function isMessageExecuted(config, chain, options) {
         throw new Error('AxelarGateway contract not found in configuration');
     }
 
-    const gatewayContract = new Contract([], gatewayConfig.address, provider);
+    const gatewayContract = await getGatewayContract(provider, gatewayConfig.address);
 
-    const result = await gatewayContract.is_message_executed(
+    const calldata = CallData.compile([
         byteArray.byteArrayFromString(sourceChain),
         byteArray.byteArrayFromString(messageId),
-    );
+    ]);
+
+    const result = await gatewayContract.is_message_executed(calldata);
 
     console.log(`Message executed status: ${result}`);
     return result;
 }
 
-async function transferOperatorship(config, chain, options) {
+async function transferOperatorship(
+    config: Config,
+    chain: ChainConfig & { name: string },
+    options: GatewayCommandOptions
+): Promise<any | OfflineTransactionResult> {
     const {
         privateKey,
         accountAddress,
@@ -349,6 +396,8 @@ async function transferOperatorship(config, chain, options) {
         offline,
         estimate,
     } = options;
+
+    const provider = getStarknetProvider(chain);
 
     const gatewayConfig = getContractConfig(config, chain.name, 'AxelarGateway');
     if (!gatewayConfig.address) {
@@ -361,26 +410,25 @@ async function transferOperatorship(config, chain, options) {
 
     // Handle estimate mode
     if (estimate) {
-        return handleGasEstimation(chain, options, gatewayConfig.address, 'transfer_operatorship', calldata);
+        const hexCalldata = calldata.map(item => num.toHex(item));
+        return handleGasEstimation(chain, options, gatewayConfig.address, 'transfer_operatorship', hexCalldata);
     }
 
     if (offline) {
+        const hexCalldata = calldata.map(item => num.toHex(item));
         const calls: Call[] = [{
             contractAddress: gatewayConfig.address,
             entrypoint: 'transfer_operatorship',
-            calldata
+            calldata: hexCalldata
         }];
         return handleOfflineTransaction(options, chain.name, calls, 'transfer_operatorship');
     }
 
     // Online execution
-    const provider = getStarknetProvider(chain);
     const account = getStarknetAccount(privateKey, accountAddress, provider);
+    const gatewayContract = await getGatewayContract(provider, gatewayConfig.address, account);
 
-    const gatewayContract = new Contract([], gatewayConfig.address, provider);
-    gatewayContract.connect(account);
-
-    const response = await gatewayContract.transfer_operatorship(newOperator);
+    const response = await gatewayContract.transfer_operatorship(calldata);
     await account.waitForTransaction(response.transaction_hash);
 
     console.log(`Operatorship transferred successfully!`);
@@ -389,7 +437,7 @@ async function transferOperatorship(config, chain, options) {
     return response;
 }
 
-async function getOperator(config, chain, options) {
+async function getOperator(config: Config, chain: ChainConfig & { name: string }, options: GatewayCommandOptions): Promise<string> {
     const provider = getStarknetProvider(chain);
 
     const gatewayConfig = getContractConfig(config, chain.name, 'AxelarGateway');
@@ -397,14 +445,15 @@ async function getOperator(config, chain, options) {
         throw new Error('AxelarGateway contract not found in configuration');
     }
 
-    const gatewayContract = new Contract([], gatewayConfig.address, provider);
+    const gatewayContract = await getGatewayContract(provider, gatewayConfig.address);
 
     const operator = await gatewayContract.operator();
-    console.log(`Current operator: ${operator}`);
-    return operator;
+    const operatorHex = num.toHex(operator);
+    console.log(`Current operator: ${operatorHex}`);
+    return operatorHex;
 }
 
-async function getEpoch(config, chain, options) {
+async function getEpoch(config: Config, chain: ChainConfig & { name: string }, options: GatewayCommandOptions): Promise<string> {
     const provider = getStarknetProvider(chain);
 
     const gatewayConfig = getContractConfig(config, chain.name, 'AxelarGateway');
@@ -412,7 +461,7 @@ async function getEpoch(config, chain, options) {
         throw new Error('AxelarGateway contract not found in configuration');
     }
 
-    const gatewayContract = new Contract([], gatewayConfig.address, provider);
+    const gatewayContract = await getGatewayContract(provider, gatewayConfig.address);
 
     const epoch = await gatewayContract.epoch();
     console.log(`Current epoch: ${epoch}`);
