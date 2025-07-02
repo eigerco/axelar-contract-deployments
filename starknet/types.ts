@@ -300,6 +300,30 @@ export interface GatewayCommandOptions extends StarknetCommandOptions {
 }
 
 /**
+ * Options for governance contract interactions
+ */
+export interface GovernanceCommandOptions extends StarknetCommandOptions {
+    /** Target contract address for proposals */
+    target?: string;
+    /** Entry point selector for contract calls */
+    entryPointSelector?: string;
+    /** Call data as JSON array */
+    callData?: string;
+    /** Native value to send with the call */
+    nativeValue?: string;
+    /** Hash for time lock or proposal lookups */
+    hash?: string;
+    /** Proposal hash for operator approvals */
+    proposalHash?: string;
+    /** Recipient address for withdrawals */
+    recipient?: string;
+    /** Amount for withdrawals */
+    amount?: string;
+    /** New operator address for transfers */
+    newOperator?: string;
+}
+
+/**
  * Configuration for CLI command options
  * Used to dynamically add command-line flags
  */
