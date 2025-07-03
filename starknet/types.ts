@@ -373,3 +373,21 @@ export interface MulticallCommandOptions extends StarknetCommandOptions {
     config: string;
 }
 
+/**
+ * Options for operators contract interactions
+ */
+export interface OperatorsCommandOptions extends StarknetCommandOptions {
+    /** Account address to check operator status */
+    account?: string;
+    /** Operator address to add or remove */
+    operator?: string;
+    /** Target contract address for execute operations */
+    target?: string;
+    /** Entry point selector for contract calls */
+    entryPointSelector?: string;
+    /** Call data as JSON array or string */
+    calldata?: string | string[];
+    /** Native value to send with the call */
+    nativeValue?: string;
+}
+
