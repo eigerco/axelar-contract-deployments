@@ -1,4 +1,3 @@
-
 import { Command } from 'commander';
 import { loadConfig } from '../common';
 import { addStarknetOptions } from './cli-utils';
@@ -13,7 +12,7 @@ import {
     validateStarknetOptions,
     estimateGasAndDisplayArgs,
 } from './utils';
-import { uint256, num, Contract, CallData, Call, Provider, Account } from 'starknet';
+import { uint256, num, Contract, CallData, Call, Provider, Account, selector } from 'starknet';
 import {
     Config,
     ChainConfig,
@@ -196,7 +195,7 @@ async function executeContract(
         privateKey,
         accountAddress,
         target,
-        entryPointSelector,
+        functionName,
         calldata: inputCalldata,
         nativeValue,
         offline,
@@ -208,8 +207,12 @@ async function executeContract(
         throw new Error('Operators contract not found in configuration');
     }
 
+    // Calculate the entrypoint selector from the function name
+    const entryPointSelector = selector.getSelectorFromName(functionName!);
+
     console.log(`Executing contract call:`);
     console.log(`Target: ${target}`);
+    console.log(`Function Name: ${functionName}`);
     console.log(`Entry Point Selector: ${entryPointSelector}`);
     console.log(`Calldata: ${inputCalldata}`);
     console.log(`Native Value: ${nativeValue}`);
@@ -364,13 +367,13 @@ async function main(): Promise<void> {
         .command('execute-contract')
         .description('Execute an external contract call')
         .argument('<target>', 'target contract address')
-        .argument('<entryPointSelector>', 'entry point selector (felt252)')
+        .argument('<functionName>', 'function name to call')
         .argument('<calldata>', 'calldata array as JSON string')
         .argument('<nativeValue>', 'native value to send (u256)');
 
     addStarknetOptions(executeCmd, { offlineSupport: true });
 
-    executeCmd.action(async (target, entryPointSelector, calldata, nativeValue, options) => {
+    executeCmd.action(async (target, functionName, calldata, nativeValue, options) => {
         validateStarknetOptions(options.env, options.offline, options.privateKey, options.accountAddress);
         const config = loadConfig(options.env);
 
@@ -383,7 +386,7 @@ async function main(): Promise<void> {
             const cmdOptions = {
                 ...options,
                 target,
-                entryPointSelector,
+                functionName,
                 calldata,
                 nativeValue,
             };

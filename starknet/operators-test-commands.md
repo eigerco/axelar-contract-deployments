@@ -51,22 +51,24 @@ npx ts-node operators.ts remove-operator "0x049d36570d4e46f48e99674bd3fcc84644dd
 ### 3. Execute Contract
 
 ```bash
-# Basic execute
+# Basic execute using function name (automatically calculates selector)
 # Note: calldata should be a JSON array of felt252 values
-# Entry point selector can be computed using starkli selector command or provided as hex
-npx ts-node operators.ts execute-contract "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7" "0x362398bec32bc0ebb411203221a35a0301193a96f317ebe5e40be9f60d15320" '["0x123", "0x456"]' "0" --env testnet --privateKey $STARKNET_PRIVATE_KEY --accountAddress $STARKNET_ACCOUNT_ADDRESS
+npx ts-node operators.ts execute-contract "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7" "transfer" '["0x6789abcdef", "0x1000", "0x0"]' "0" --env testnet --privateKey $STARKNET_PRIVATE_KEY --accountAddress $STARKNET_ACCOUNT_ADDRESS
 
-# Example with transfer function (selector for 'transfer')
-npx ts-node operators.ts execute-contract "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7" "0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e" '["0x6789abcdef", "0x1000", "0x0"]' "0" --env testnet --privateKey $STARKNET_PRIVATE_KEY --accountAddress $STARKNET_ACCOUNT_ADDRESS
+# Example with approve function
+npx ts-node operators.ts execute-contract "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7" "approve" '["0x6789abcdef", "0x1000", "0x0"]' "0" --env testnet --privateKey $STARKNET_PRIVATE_KEY --accountAddress $STARKNET_ACCOUNT_ADDRESS
+
+# Example with balance_of function (view function)
+npx ts-node operators.ts execute-contract "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7" "balance_of" '["0x6789abcdef"]' "0" --env testnet --privateKey $STARKNET_PRIVATE_KEY --accountAddress $STARKNET_ACCOUNT_ADDRESS
 
 # With native value (sending ETH)
-npx ts-node operators.ts execute-contract "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7" "0x362398bec32bc0ebb411203221a35a0301193a96f317ebe5e40be9f60d15320" '[]' "1000000000000000000" --env testnet --privateKey $STARKNET_PRIVATE_KEY --accountAddress $STARKNET_ACCOUNT_ADDRESS
+npx ts-node operators.ts execute-contract "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7" "deposit" '[]' "1000000000000000000" --env testnet --privateKey $STARKNET_PRIVATE_KEY --accountAddress $STARKNET_ACCOUNT_ADDRESS
 
 # With gas estimation
-npx ts-node operators.ts execute-contract "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7" "0x362398bec32bc0ebb411203221a35a0301193a96f317ebe5e40be9f60d15320" '["0x123"]' "0" --env testnet --privateKey $STARKNET_PRIVATE_KEY --accountAddress $STARKNET_ACCOUNT_ADDRESS --estimate
+npx ts-node operators.ts execute-contract "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7" "transfer" '["0x123", "0x1000", "0x0"]' "0" --env testnet --privateKey $STARKNET_PRIVATE_KEY --accountAddress $STARKNET_ACCOUNT_ADDRESS --estimate
 
 # Offline transaction
-npx ts-node operators.ts execute-contract "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7" "0x362398bec32bc0ebb411203221a35a0301193a96f317ebe5e40be9f60d15320" '["0x123"]' "0" --env testnet --offline
+npx ts-node operators.ts execute-contract "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7" "transfer" '["0x123", "0x1000", "0x0"]' "0" --env testnet --offline
 ```
 
 ## Read Commands (No private key needed)
@@ -96,8 +98,8 @@ npx ts-node operators.ts is-operator "0x049d36570d4e46f48e99674bd3fcc84644ddd6b9
 
 4. **Test execute contract** with a simple call:
    ```bash
-   # Example: calling a view function
-   npx ts-node operators.ts execute-contract "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7" "0x362398bec32bc0ebb411203221a35a0301193a96f317ebe5e40be9f60d15320" '[]' "0" --env testnet --privateKey $STARKNET_PRIVATE_KEY --accountAddress $STARKNET_ACCOUNT_ADDRESS
+   # Example: calling a view function using function name
+   npx ts-node operators.ts execute-contract "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7" "balance_of" '["0x123"]' "0" --env testnet --privateKey $STARKNET_PRIVATE_KEY --accountAddress $STARKNET_ACCOUNT_ADDRESS
    ```
 
 5. **Test gas estimation**:
@@ -110,29 +112,14 @@ npx ts-node operators.ts is-operator "0x049d36570d4e46f48e99674bd3fcc84644ddd6b9
    npx ts-node operators.ts add-operator "0x123" --env testnet --offline
    ```
 
-## Common Entry Point Selectors
-
-Here are some common function selectors you might use with execute-contract:
-
-```bash
-# Calculate selector using starkli
-starkli selector "transfer"
-# Result: 0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e
-
-starkli selector "approve"
-# Result: 0x219209e083275171774dab1df80982e9df2096516f06319c5c6d71ae0a8480c
-
-starkli selector "balance_of"
-# Result: 0x2e4263afad30923c891518314c3c95dbe830a16874e8abc5777a9a20b54c76e
-```
-
 ## Notes
 
 - Replace all placeholder addresses with actual test data
 - For testnet, you can get test ETH from the Starknet faucet
 - Contract addresses should be in hex format (0x...)
 - The calldata array should contain felt252 values as hex strings
-- Entry point selectors can be calculated using `starkli selector <function_name>`
+- Function names are automatically converted to entry point selectors using the starknet.js selector utility
+- Use the exact function name as defined in the Cairo contract (e.g., "transfer", "balance_of", "approve")
 - Native value is specified as a u256 (can be decimal string or hex)
 - For offline transactions, follow up with the signing and broadcasting workflow
 - Only operators can call add_operator, remove_operator, and execute_contract functions
