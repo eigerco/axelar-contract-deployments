@@ -373,3 +373,51 @@ export interface MulticallCommandOptions extends StarknetCommandOptions {
     config: string;
 }
 
+/**
+ * Options for operators contract interactions
+ */
+export interface OperatorsCommandOptions extends StarknetCommandOptions {
+    /** Account address to check operator status */
+    account?: string;
+    /** Operator address to add or remove */
+    operator?: string;
+    /** Target contract address for execute operations */
+    target?: string;
+    /** Function name for contract calls (will be converted to selector) */
+    functionName?: string;
+    /** Call data as JSON array or string */
+    calldata?: string | string[];
+    /** Native value to send with the call */
+    nativeValue?: string;
+}
+
+/**
+ * Options for gas service contract interactions
+ */
+export interface GasServiceCommandOptions extends StarknetCommandOptions {
+    /** Action to perform */
+    action?: string;
+    /** Receiver address for collect and refund operations */
+    receiverAddress?: string;
+    /** Array of contracts and amounts for collect operation */
+    contractsAmounts?: Array<{ contract_address: string; amount: string }>;
+    /** Transaction hash for refund and add gas operations */
+    txHash?: string;
+    /** Log index for refund and add gas operations */
+    logIndex?: number;
+    /** Token address for operations */
+    tokenAddress?: string;
+    /** Amount for refund, add gas, and pay gas operations */
+    amount?: string;
+    /** Refund address for gas operations */
+    refundAddress?: string;
+    /** Destination chain for pay gas operation */
+    destinationChain?: string;
+    /** Destination address for pay gas operation */
+    destinationAddress?: string;
+    /** Payload hash for pay gas operation */
+    payloadHash?: string;
+    /** Additional parameters for pay gas operation */
+    params?: string;
+}
+
