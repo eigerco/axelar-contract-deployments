@@ -1,6 +1,6 @@
 # Starknet Deployment Scripts 🏗️
 
-This directory contains deployment and operational scripts for Axelar contracts on Starknet. The scripts support both online and offline workflows, with hardware wallet integration for secure mainnet deployments.
+This directory contains deployment and operational scripts for Axelar contracts on Starknet. The scripts support both online and offline workflows, with hardware wallet integration for secure mainnet operations.
 
 ## 🔧 Setup
 
@@ -29,40 +29,57 @@ Create a `.env` file with the following variables (see `.example.env` for refere
 
 ```bash
 # Starknet Configuration
-STARKNET_PRIVATE_KEY=0x...  # For testnet/devnet only
+STARKNET_PRIVATE_KEY=0x...  # For testnet only, mainnet requires offline workflow
 STARKNET_ACCOUNT_ADDRESS=0x...
 
 # Network settings
-ENV=testnet  # or mainnet, devnet, stagenet
+ENV=testnet  # or mainnet
 ```
 
 ## 🚀 Core Features
 
 ### Dual Workflow Support
-- **Online Mode**: Direct transaction execution (testnet/devnet)
-- **Offline Mode**: Unsigned transaction generation for hardware wallet signing (mainnet)
+- **Online Mode**: Direct transaction execution (testnet only)
+- **Offline Mode**: Unsigned transaction generation for hardware wallet signing (required for mainnet)
 
 ### Chain Configuration
 - Starknet scripts automatically use the 'starknet' chain from your environment config
 - No need to specify chain names in commands
 
 ### Security Model
-- **Testnet/Devnet**: Private key-based signing
+Based on the the passed `--env` flag value:
+- **Testnet**: Private key-based signing
 - **Mainnet**: Mandatory offline workflow with Ledger hardware wallets
 
 ### Transaction Types
-- **Invoke Transactions**: Contract calls and deployments
+- **Deploy Transactions**: Contract deployments with deterministic addresses
+- **Invoke Transactions**: Contract calls and state modifications
 - **Declare Transactions**: Contract class declarations (online only)
 - **Multicall Transactions**: Execute multiple calls in a single transaction
+- **Query Transactions**: Read-only contract queries (no state changes)
 
 ### Contract Support
 - ✅ Contract declaration, deployment and upgrades
 - ✅ Gateway operations (call contract, approve messages, validate messages)
 - ✅ Signer rotation and operatorship management
 - ✅ Multicall support for batching operations
-- 🔄 Additional contracts (Gas Service, Operators, ITS) - *coming soon*
+- ✅ Gas Service contract operations
+- ✅ Operators contract management
+- 🔄 ITS (Interchain Token Service) - *coming soon*
 
 ## 📚 Core Workflow
+
+### Offline Transaction Workflow (Required for Mainnet)
+
+The offline transaction workflow requires several steps to ensure security when using hardware wallets:
+
+1. **Gas Estimation** (Online) - Estimate transaction fees using an online environment
+2. **Transaction File Generation** (Offline) - Generate unsigned transaction with gas fee flags from previous step
+3. **Signature Distribution** - Share the unsigned transaction file with all multisig signers
+4. **Individual Signing** (Offline) - Each signer independently signs the transaction, generating a signed file
+5. **Signature Collection** - All signers share their signed files with one coordinator
+6. **Signature Combination** - Coordinator combines all signatures into a single multisig transaction
+7. **Transaction Broadcast** (Online) - Submit the fully signed transaction to the network
 
 ### 1. Declare Contract (Online Only)
 ```bash
@@ -78,7 +95,7 @@ This will declare the contract on-chain and save the class hash to the configura
 
 ### 2. Deploy Contract
 
-**Online Deployment (Testnet/Devnet):**
+**Online Deployment (Testnet):**
 ```bash
 npx ts-node starknet/deploy-contract.ts \
   --env testnet \
@@ -178,7 +195,7 @@ Create a JSON configuration file specifying all calls to execute:
 }
 ```
 
-### Online Multicall (Testnet/Devnet)
+### Online Multicall (Testnet)
 
 ```bash
 npx ts-node starknet/multicall.ts examples/multicall-example.json \
@@ -524,16 +541,18 @@ Contracts are managed through configuration names stored in the chain config. Ea
 ## 🛠️ CLI Options Reference
 
 **Base Options (available on all scripts):**
-- `-e, --env`: Environment (testnet, mainnet, devnet, stagenet)
+- `-e, --env`: Environment (testnet, mainnet)
 - `-y, --yes`: Skip confirmation prompts
 
 **Starknet-Specific Options:**
 - `--privateKey`: Private key (testnet only, not required for offline)
 - `--accountAddress`: Account address
-- `--offline`: Generate unsigned transaction
-- `--estimate`: Estimate gas and display CLI arguments to copy
-- `--nonce`: Account nonce (required for offline)
+- `--offline`: Generate unsigned transaction for hardware wallet signing
+- `--estimate`: Estimate gas and display CLI arguments to copy (use these flags in the next step)
+- `--nonce`: Account nonce (required for offline, must be manually specified)
 - `--outputDir`: Output directory for offline files
+
+**Note:** For online transactions, use `--privateKey`. For offline transactions, first run with `--estimate` to get gas parameters, then run with `--offline`, `--nonce`, and the gas flags from estimation.
 
 **Declare-Specific Options:**
 - `--contractConfigName`: Name to store in config
@@ -633,8 +652,4 @@ When adding new contracts:
 3. Deploy contract using `deploy-contract.ts`
 4. Add contract-specific interaction scripts if needed
 5. Test on testnet before mainnet
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](../LICENSE) file for details.
 
