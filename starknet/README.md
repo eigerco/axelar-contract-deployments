@@ -594,6 +594,9 @@ Contracts are managed through configuration names stored in the chain config. Ea
 
 ### Contract-Specific Guides
 - **[Gateway Operations](./docs/gateway.md)** - Cross-chain messaging and gateway management
+- **[Gas Service Operations](./docs/gas-service.md)** - Gas payment and management commands
+- **[Governance Operations](./docs/governance.md)** - Governance proposal and execution commands
+- **[Operators Operations](./docs/operators.md)** - Operator management and configuration
 
 ### Workflow Guides
 - **[Offline Signing](./docs/OFFLINE-SIGNING.md)** - Complete guide for mainnet offline workflow
