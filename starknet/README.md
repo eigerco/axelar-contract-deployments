@@ -69,7 +69,7 @@ Based on the the passed `--env` flag value:
 
 ## 📚 Core Workflow
 
-### Offline Transaction Workflow (Required for Mainnet)
+### Offline Transaction Overview (Required for Mainnet)
 
 The offline transaction workflow requires several steps to ensure security when using hardware wallets:
 
@@ -80,19 +80,6 @@ The offline transaction workflow requires several steps to ensure security when 
 5. **Signature Collection** - All signers share their signed files with one coordinator
 6. **Signature Combination** - Coordinator combines all signatures into a single multisig transaction
 7. **Transaction Broadcast** (Online) - Submit the fully signed transaction to the network
-
-### Core Contract Operations
-
-For detailed command examples and workflows, see:
-- **[Contract Declaration](./docs/declare.md)** - Declare contract classes on-chain
-- **[Contract Deployment](./docs/deploy.md)** - Deploy contract instances
-- **[Contract Upgrades](./docs/upgrade.md)** - Upgrade existing contracts
-
-### Advanced Operations
-
-- **[Multicall Operations](./docs/multicall.md)** - Batch multiple calls in one transaction
-- **[Multisig Management](./docs/multisig.md)** - Argent multisig account operations
-
 
 ## 🔐 Offline Signing Workflow (Mainnet)
 
@@ -246,8 +233,8 @@ Contracts are managed through configuration names stored in the chain config. Ea
 
 ## 📚 Documentation
 
-### Core Operations
-- **[Contract Declaration](./docs/declare.md)** - Declare contract classes on-chain
+### Contract Operations
+- **[Contract Declaration (online only)](./docs/declare.md)** - Declare contract classes on-chain
 - **[Contract Deployment](./docs/deploy.md)** - Deploy contract instances
 - **[Contract Upgrades](./docs/upgrade.md)** - Upgrade existing contracts
 - **[Multicall Operations](./docs/multicall.md)** - Batch multiple calls in one transaction
@@ -258,10 +245,6 @@ Contracts are managed through configuration names stored in the chain config. Ea
 - **[Gas Service Operations](./docs/gas-service.md)** - Gas payment and management commands
 - **[Governance Operations](./docs/governance.md)** - Governance proposal and execution commands
 - **[Operators Operations](./docs/operators.md)** - Operator management and configuration
-
-### Workflow Guides
-- **[Offline Signing](./docs/OFFLINE-SIGNING.md)** - Complete guide for mainnet offline workflow
-- **[Key Management](./key-management.md)** - Security guidelines and key management
 
 ## 🔍 Troubleshooting
 
@@ -279,9 +262,6 @@ Contracts are managed through configuration names stored in the chain config. Ea
 **"Contract path does not exist"**
 - Solution: Verify the path to your contract JSON file is correct
 
-### Debug Mode
-
-Add `--verbose` flag to any command for detailed logging.
 
 ### Argent Multisig Debugging
 
@@ -306,14 +286,4 @@ npx ts-node starknet/format-multisig-constructor.ts \
 - [Starknet Official Documentation](https://docs.starknet.io/)
 - [Starknet.js Library](https://starknetjs.com/)
 - [Axelar Network Documentation](https://docs.axelar.dev/)
-
-## 🤝 Contributing
-
-When adding new contracts:
-
-1. Prepare contract artifacts (sierra and casm JSON files)
-2. Declare contract using `declare-contract.ts`
-3. Deploy contract using `deploy-contract.ts`
-4. Add contract-specific interaction scripts if needed
-5. Test on testnet before mainnet
 
