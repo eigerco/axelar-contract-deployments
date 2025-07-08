@@ -7,7 +7,8 @@ This directory contains deployment and operational scripts for Axelar contracts 
 ### Prerequisites
 
 - Node.js >= 18
-- Starknet.js dependencies
+- All dependencies installed
+- `scarb` >= 2.11.4
 - For mainnet: Ledger hardware wallet
 
 ### Installation
@@ -15,13 +16,6 @@ This directory contains deployment and operational scripts for Axelar contracts 
 ```bash
 npm ci && npm run build
 ```
-
-### TypeScript Support
-
-All scripts now use `ts-node` for TypeScript execution:
-- Compatible with existing JavaScript workflows
-- Enhanced type safety and development experience
-- All commands use `ts-node` instead of `node`
 
 ### Environment Configuration
 
@@ -36,9 +30,19 @@ STARKNET_ACCOUNT_ADDRESS=0x...
 ENV=testnet  # or mainnet
 ```
 
+### Prerequisite steps
+Before you start running contract related scripts you need to:
+
+1. Build all your contracts using `scarb build`. You can run that command in the root of giza-axelar-starknet and it will build all contracts for you.
+2. Declare all the contracts you plan to deploy using the `declare.ts` script or the `starkli` CLI tool.
+3. Deploy all the contracts you've declared using the `deploy.ts` script.
+
+These 3 steps will update the axelar-chains-config JSON file for the `--env` you use in your commands.
+
 ## 🚀 Core Features
 
 ### Dual Workflow Support
+All commands, except the contract declaration(which is only online) have 2 modes:
 - **Online Mode**: Direct transaction execution (testnet only)
 - **Offline Mode**: Unsigned transaction generation for hardware wallet signing (required for mainnet)
 
