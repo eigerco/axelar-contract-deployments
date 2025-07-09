@@ -5,7 +5,7 @@ This file contains example commands for managing Argent multisig v0.2.0 accounts
 ## Prerequisites
 
 Make sure you have:
-- A deployed Argent multisig account
+- A deployed Argent v0.2.0 multisig account
 - Valid signer credentials
 - For mainnet: Ledger hardware wallet
 - Understanding of multisig threshold requirements
