@@ -21,50 +21,6 @@ export STARKNET_PRIVATE_KEY=0x1234...
 export STARKNET_ACCOUNT_ADDRESS=0x5678...
 ```
 
-## Write Commands (Support --offline and --estimate)
-
-### Online Deployment (Testnet)
-
-```bash
-npx ts-node starknet/deploy-contract.ts \
-  --env testnet \
-  --contractConfigName AxelarGateway \
-  --constructorCalldata '["0x1234"]' \
-  --salt 0x123 \
-  --privateKey 0x... \
-  --accountAddress 0x...
-```
-
-### Offline Deployment (Mainnet)
-
-**Step 1: Estimate Gas (Online Environment)**
-```bash
-npx ts-node starknet/deploy-contract.ts \
-  --env mainnet \
-  --contractConfigName AxelarGateway \
-  --constructorCalldata '["0x1234"]' \
-  --salt 0x123 \
-  --estimate \
-  --privateKey 0x... \
-  --accountAddress 0x...
-```
-
-**Step 2: Generate Unsigned Transaction (Offline Environment)**
-```bash
-npx ts-node starknet/deploy-contract.ts \
-  --env mainnet \
-  --contractConfigName AxelarGateway \
-  --constructorCalldata '["0x1234"]' \
-  --salt 0x123 \
-  --offline \
-  --nonce 5 \
-  --accountAddress 0x... \
-  --l1GasMaxAmount 50000 \
-  --l1GasMaxPricePerUnit 100000000000 \
-  --l2GasMaxAmount 1000000 \
-  --l2GasMaxPricePerUnit 1000000000
-```
-
 ## Command Options
 
 ### Required Options
@@ -145,21 +101,19 @@ npx ts-node starknet/deploy-contract.ts \
      --l2GasMaxPricePerUnit 1000000000
    ```
 
-4. **Follow offline signing workflow** (see main README)
+4. **Follow offline signing workflow** (see main offline.md)
 
 ## Constructor Calldata Format
 
-Constructor arguments must be provided as a JSON array string:
+Constructor arguments must be Cairo serialized and provided as a JSON array string:
 - Empty constructor: `'[]'`
 - Single parameter: `'["0x1234"]'`
-- Multiple parameters: `'["0x1234", "parameter2", "100"]'`
-- Complex types: Follow Starknet ABI encoding
+- Multiple parameters: `'["0x1234", "0x5678", "0x0", ...]'`
 
 ## Deterministic Addresses
 
 Using a salt allows for deterministic contract addresses:
 - Same salt + same constructor args = same address
-- Useful for cross-chain consistency
 - Salt can be any valid hex value
 
 ## Output
@@ -167,7 +121,7 @@ Using a salt allows for deterministic contract addresses:
 Successful deployment will show:
 - Contract Address: The deployed contract address
 - Transaction Hash: The deployment transaction hash
-- Configuration update with deployment details
+- Axelar JSON configuration update with deployment details
 
 ## Common Issues
 
@@ -189,4 +143,4 @@ Successful deployment will show:
 - Salt is optional but recommended for deterministic addresses
 - Constructor calldata must match contract's constructor signature
 - Deployment saves contract address to config for future reference
-- For mainnet, always use offline workflow with hardware wallets
+- For mainnet, it's required to use offline workflow with hardware wallets
