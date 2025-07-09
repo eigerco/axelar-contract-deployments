@@ -35,7 +35,7 @@ Before you start running contract related scripts you need to:
 
 1. Build all your contracts using `scarb build`. You can run that command in the root of giza-axelar-starknet and it will build all contracts for you.
 2. Create and fund a starknet account (single or multi signature).
-2. Declare all the contracts you plan to deploy using the `declare.ts` script or the `starkli` CLI tool.
+2. Declare all the contracts you plan to deploy using the `declare.ts` script, which will also create the objects in the `axelar-chain-config` JSON file.
 3. Deploy all the contracts you've declared using the `deploy.ts` script.
 
 These 3 steps will update the axelar-chains-config JSON file for the `--env` you use in your commands.
