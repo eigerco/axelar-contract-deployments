@@ -7,7 +7,7 @@ This file contains example commands for testing all gas service functions. Repla
 Make sure you have:
 - A funded account on testnet
 - The gas service contract deployed
-- ERC20 tokens for testing gas payments
+- Any ERC20 token for testing gas payments
 - Valid test data for each command
 
 ## Data Structure Notes
@@ -41,7 +41,7 @@ export TEST_RECEIVER_ADDRESS=0x1234
 
 ### 1. Collect Fees
 
-Collect accumulated fees from the contract. Only callable by the gas collector authority.
+Collect accumulated fees from the contract. Only callable by the gas collector authority, which is usually the operators contract.
 
 ```bash
 # Basic collect
@@ -79,7 +79,7 @@ npx ts-node gas-service.ts collect \
 
 ### 2. Refund Tokens
 
-Refund tokens to a specific address. Only callable by the gas collector authority.
+Refund tokens to a specific address. Only callable by the gas collector authority, which is usually the operators contract.
 
 ```bash
 # Basic refund
@@ -199,23 +199,9 @@ npx ts-node gas-service.ts pay-gas \
   --env testnet \
   --offline
 
-# With additional parameters
-npx ts-node gas-service.ts pay-gas \
-  --destinationChain "polygon" \
-  --destinationAddress "0x1234567890123456789012345678901234567890" \
-  --payloadHash "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890" \
-  --tokenAddress $TEST_TOKEN_ADDRESS \
-  --refundAddress $TEST_RECEIVER_ADDRESS \
-  --amount "300000" \
-  --params "priority:high,gasLimit:500000" \
-  --env testnet \
-  --privateKey $STARKNET_PRIVATE_KEY \
-  --accountAddress $STARKNET_ACCOUNT_ADDRESS
-```
-
 ## Testing Workflow
 
-1. **Deploy an ERC20 token** for testing (or use existing testnet tokens)
+1. Pick the ERC20 token you want to pay with
 
 2. **Fund the gas service contract** with test tokens:
    ```bash
@@ -279,11 +265,11 @@ npx ts-node gas-service.ts pay-gas \
 
 - Only the gas collector authority can call `collect` and `refund` functions
 - Regular users can call `add_gas` and `pay_gas` functions
-- All amounts are in the token's smallest unit (e.g., wei for ETH)
+- All amounts are in the token's smallest unit (e.g., FRI for STRK)
 - The `txHash` parameter should be a valid felt252 value
 - The `logIndex` parameter is a u64 value
 - The `payloadHash` should be a valid u256 value (can be represented as hex string)
-- The `params` field in `pay_gas` is a string that will be converted to ByteArray
+- The `params` field in `pay_gas` is a string that will be converted to ByteArray and emitted in the event
 - For offline transactions, you'll need to follow up with the signing and broadcasting workflow
 - Make sure to approve the gas service contract to spend your tokens before calling `pay_gas` or `add_gas`
 

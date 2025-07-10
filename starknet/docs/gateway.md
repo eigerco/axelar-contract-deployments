@@ -111,7 +111,28 @@ npx ts-node gateway.ts rotate-signers '{"signers": [{"signer": "0x111", "weight"
 npx ts-node gateway.ts rotate-signers '{"signers": [{"signer": "0x111", "weight": 1}, {"signer": "0x222", "weight": 1}], "threshold": 2, "nonce": "0x2"}' '{"signers": {"signers": [{"signer": "0x123", "weight": 1}, {"signer": "0x456", "weight": 1}], "threshold": 2, "nonce": "0x1"}, "signatures": [[1,2,3,4]], [[5,6,7,8]]}' --env testnet --offline
 ```
 
-### 5. Transfer Operatorship
+### 5. Initialize Signers
+
+```bash
+# Basic init signers (can only be called once after deployment or upgrade)
+# Note: signers is an array of WeightedSigners structs
+# Each WeightedSigners struct contains: signers array, threshold, and nonce
+npx ts-node gateway.ts init-signers '[{"signers": [{"signer": "0x123", "weight": 1}, {"signer": "0x456", "weight": 1}], "threshold": 2, "nonce": "0x1"}]' --env testnet --privateKey $STARKNET_PRIVATE_KEY --accountAddress $STARKNET_ACCOUNT_ADDRESS
+
+# With optional operator address
+npx ts-node gateway.ts init-signers '[{"signers": [{"signer": "0x123", "weight": 1}, {"signer": "0x456", "weight": 1}], "threshold": 2, "nonce": "0x1"}]' --operator "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7" --env testnet --privateKey $STARKNET_PRIVATE_KEY --accountAddress $STARKNET_ACCOUNT_ADDRESS
+
+# With gas estimation
+npx ts-node gateway.ts init-signers '[{"signers": [{"signer": "0x123", "weight": 1}, {"signer": "0x456", "weight": 1}], "threshold": 2, "nonce": "0x1"}]' --env testnet --privateKey $STARKNET_PRIVATE_KEY --accountAddress $STARKNET_ACCOUNT_ADDRESS --estimate
+
+# Offline transaction
+npx ts-node gateway.ts init-signers '[{"signers": [{"signer": "0x123", "weight": 1}, {"signer": "0x456", "weight": 1}], "threshold": 2, "nonce": "0x1"}]' --env testnet --offline
+
+# Multiple signer sets example
+npx ts-node gateway.ts init-signers '[{"signers": [{"signer": "0x123", "weight": 1}], "threshold": 1, "nonce": "0x1"}, {"signers": [{"signer": "0x456", "weight": 2}], "threshold": 2, "nonce": "0x2"}]' --env testnet --privateKey $STARKNET_PRIVATE_KEY --accountAddress $STARKNET_ACCOUNT_ADDRESS
+```
+
+### 6. Transfer Operatorship
 
 ```bash
 # Basic transfer
@@ -126,52 +147,29 @@ npx ts-node gateway.ts transfer-operatorship "0x049d36570d4e46f48e99674bd3fcc846
 
 ## Read Commands (No private key needed)
 
-### 6. Is Message Approved
+### 7. Is Message Approved
 
 ```bash
 npx ts-node gateway.ts is-message-approved "ethereum" "0x123456" "0x1234567890123456789012345678901234567890" "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7" "0x9876543210" --env testnet
 ```
 
-### 7. Is Message Executed
+### 8. Is Message Executed
 
 ```bash
 npx ts-node gateway.ts is-message-executed "ethereum" "0x123456" --env testnet
 ```
 
-### 8. Get Operator
+### 9. Get Operator
 
 ```bash
 npx ts-node gateway.ts get-operator --env testnet
 ```
 
-### 9. Get Epoch
+### 10. Get Epoch
 
 ```bash
 npx ts-node gateway.ts get-epoch --env testnet
 ```
-
-## Testing Workflow
-
-1. **Start with read commands** to verify the gateway contract is accessible:
-   ```bash
-   npx ts-node gateway.ts get-operator --env testnet
-   npx ts-node gateway.ts get-epoch --env testnet
-   ```
-
-2. **Test gas estimation** for write commands:
-   ```bash
-   npx ts-node gateway.ts call-contract "ethereum" "0x123" "test" --env testnet --privateKey $STARKNET_PRIVATE_KEY --accountAddress $STARKNET_ACCOUNT_ADDRESS --estimate
-   ```
-
-3. **Test offline transaction generation**:
-   ```bash
-   npx ts-node gateway.ts call-contract "ethereum" "0x123" "test" --env testnet --offline
-   ```
-
-4. **Test actual transactions** (requires funded account):
-   ```bash
-   npx ts-node gateway.ts call-contract "ethereum" "0x123" "test" --env testnet --privateKey $STARKNET_PRIVATE_KEY --accountAddress $STARKNET_ACCOUNT_ADDRESS
-   ```
 
 ## Notes
 

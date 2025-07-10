@@ -125,6 +125,56 @@
       "finality": "finalized",
       "approxFinalityWaitTime": 40
     },
+    "starknet": {
+      "name": "Starknet-Sepolia",
+      "axelarId": "starknet-devnet-v1",
+      "rpc": "https://starknet-sepolia.public.blastapi.io/rpc/v0_8",
+      "tokenSymbol": "STRK",
+      "decimals": 18,
+      "universalDeployerAddress": "0x041a78e741e5af2fec34b695679bc6891742439f7afb8484ecd7766661ad02bf",
+      "contracts": {
+        "AxelarGateway": {
+          "deployer": "0x0282b4492e08d8b6bbec8dfe7412e42e897eef9c080c5b97be1537433e583bdc",
+          "address": "0x3d602ae73d488eb4b40d83dc82f03d7c8e63c1b68ed000e767a59871b95a4cd",
+          "classHash": "0x007eb89b57c847f1c3dff2799ecd02c12507967c2e4da6cf32bbf9d7c396429a",
+          "deploymentTransactionHash": "0x79efad7b2df0679da65c24c766b04877dc37b52c442e974a787d14123298081",
+          "salt": "0",
+          "deployedAt": "2025-06-10T12:54:01.728Z"
+        },
+        "AxelarGasService": {
+          "classHash": "0x25ce335859ad3a17fa1e79d80500a36d0517e76dfe8a84f6caff6154b180ab5",
+          "deployedAt": "2025-06-10T14:08:28.645Z",
+          "address": "0x718840ec2ca5a63965eb522ccfbefb6b14809b24fb5c0d42a99f169a1c3f3df",
+          "deploymentTransactionHash": "0x50277933bdc02f2150cdfbacc5eff3f60fd9c6db3f66913a8e5ad00eb135b59",
+          "deployer": "0x0282b4492e08d8b6bbec8dfe7412e42e897eef9c080c5b97be1537433e583bdc",
+          "salt": "0"
+        },
+        "Governance": {
+          "classHash": "0x038653d93bfa473e81a845489033f80982d5960f578ca2c7a9c5a6def6e1208a",
+          "address": "0x5cac22aa15bd0f81328c0125790d3e7bff5694b94b3e236a40b634869cba7b9",
+          "deploymentTransactionHash": "0x546c8f47d6ba3d256cae79fa15b9f42ace96d4cb709b4a61ffda280a5f94d68",
+          "deployer": "0x0282b4492e08d8b6bbec8dfe7412e42e897eef9c080c5b97be1537433e583bdc",
+          "salt": "0",
+          "deployedAt": "2025-07-02T15:11:40.963Z"
+        },
+        "Operators": {
+          "classHash": "0x02a0c334830573dbd0a9714685e92390a536ec83b7ef8ae1c2166d6b6c61db24",
+          "address": "0x6b6c4a8ccc9b78631a2064d9e5167ee40cf922382a6150e79eca081f0a3da40",
+          "deploymentTransactionHash": "0x4299628a7c78f9920e89f9af454349d42f0040ca5ae2d265d7a0452c9177cd1",
+          "deployer": "0x0282b4492e08d8b6bbec8dfe7412e42e897eef9c080c5b97be1537433e583bdc",
+          "salt": "0",
+          "deployedAt": "2025-07-03T12:22:46.499Z"
+        }
+      },
+      "explorer": {
+        "explorer": "Voyager",
+        "url": "https://sepolia.voyager.online"
+      },
+      "gasOptions": {
+        "gasLimit": 8000000
+      },
+      "approxFinalityWaitTime": 3
+    },
     "avalanche": {
       "name": "Avalanche",
       "axelarId": "Avalanche",

@@ -297,6 +297,10 @@ export interface GatewayCommandOptions extends StarknetCommandOptions {
     proof?: any;
     /** New signers configuration */
     newSigners?: any;
+    /** Signers configuration for init_signers */
+    signers?: any[];
+    /** Operator address for init_signers */
+    operator?: string;
 }
 
 /**

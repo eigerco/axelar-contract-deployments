@@ -209,23 +209,6 @@ npx ts-node governance.ts execute-proposal \
   --env testnet
 ```
 
-## Notes on Data Serialization
-
-1. **ByteArray**: Strings are automatically converted to ByteArray format using `byteArray.byteArrayFromString()`
-
-2. **u256**: Large numbers should be passed as strings and are converted using `uint256.bnToUint256()`. For example:
-   - "1000000000000000000" for 1 ETH
-   - "0" for zero value
-
-3. **ContractAddress**: Pass as hex strings (e.g., "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7")
-
-4. **felt252**: Pass as hex strings for selectors and hashes
-
-5. **Span<felt252>**: Pass as JSON arrays of hex strings (e.g., '["0x123", "0x456"]')
-
-6. **Call Data Compilation**: The script uses `CallData.compile()` to properly serialize all parameters before sending to the contract
-
-
 ## Offline Workflow
 
 For mainnet operations with hardware wallets:

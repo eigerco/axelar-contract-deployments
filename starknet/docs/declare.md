@@ -5,16 +5,16 @@ This file contains example commands for declaring contracts on Starknet. Contrac
 ## Prerequisites
 
 Make sure you have:
-- A funded account on testnet
-- Compiled contract artifacts (both .contract_class.json and .compiled_contract_class.json files)
+- A funded account
+- Compiled contract artifacts
 - Valid account credentials
 
 ## Important Notes
 
-- Contract declaration is **online only** - it cannot be done offline
-- Both Sierra (.contract_class.json) and CASM (.compiled_contract_class.json) files are required
-- The CASM file should be in the same directory with the same base name
-- Class hash is saved to configuration for later use in deployment
+- Contract declaration is **online only**
+- Both Sierra (.contract_class.json) and CASM (.compiled_contract_class.json) files are required. They are generated after building the contracts.
+- The CASM file should be in the same directory with the same base name. This is the default naming after a `scarb build`.
+- Class hash is saved to the Axelar JSON config file for later use in deployment
 
 ## Environment Setup
 
@@ -61,21 +61,15 @@ npx ts-node starknet/declare-contract.ts \
 - `--accountAddress`: Account address for transaction
 - `--yes`: Skip confirmation prompts
 
-## Testing Workflow
+## Declaring Workflow
 
-1. **Prepare contract artifacts**:
-   - Ensure you have both Sierra and CASM files
-   - Files should follow naming convention:
-     - Sierra: `ContractName.contract_class.json`
-     - CASM: `ContractName.compiled_contract_class.json`
-
-2. **Verify account has funds**:
+1. **Verify account has funds**:
    ```bash
    # Check your account balance before declaring
    starkli account fetch $STARKNET_ACCOUNT_ADDRESS --rpc $RPC_URL
    ```
 
-3. **Declare the contract**:
+2. **Declare the contract**:
    ```bash
    npx ts-node starknet/declare-contract.ts \
      --env testnet \
@@ -85,8 +79,8 @@ npx ts-node starknet/declare-contract.ts \
      --accountAddress $STARKNET_ACCOUNT_ADDRESS
    ```
 
-4. **Verify declaration**:
-   - Check the output for the class hash
+3. **Verify declaration**:
+   - Check the class hash in a Starknet explorer of your choosing
    - Verify the class hash is saved in config
    - The class hash can now be used for deployments
 
@@ -110,6 +104,10 @@ Successful declaration will show:
 
 **"Insufficient funds"**
 - Solution: Get test ETH from the Starknet faucet
+
+**"Class with hash 0x... is already declared"**
+- There is already a contract with this class hash declared on chain
+- You can use the class hash to deploy a new instance of this contract if you want
 
 ## Notes
 
