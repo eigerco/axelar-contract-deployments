@@ -384,6 +384,77 @@ async function isMessageExecuted(config: Config, chain: ChainConfig & { name: st
     return result;
 }
 
+async function initSigners(
+    config: Config,
+    chain: ChainConfig & { name: string },
+    options: GatewayCommandOptions
+): Promise<any | OfflineTransactionResult> {
+    const {
+        privateKey,
+        accountAddress,
+        signers,
+        operator,
+        offline,
+        estimate,
+    } = options;
+
+    const gatewayConfig = getContractConfig(config, chain.name, 'AxelarGateway');
+    if (!gatewayConfig.address) {
+        throw new Error('AxelarGateway contract not found in configuration');
+    }
+
+    console.log(`Initializing signers on ${chain.name}`);
+    console.log(`Number of signer sets: ${signers.length}`);
+    if (operator) {
+        console.log(`Setting operator to: ${operator}`);
+    }
+
+    // Format signers array - each element should be a WeightedSigners struct
+    const formattedSigners = signers.map(weightedSigners => ({
+        signers: weightedSigners.signers.map(signer => ({
+            signer: signer.signer,
+            weight: signer.weight
+        })),
+        threshold: weightedSigners.threshold,
+        nonce: uint256.bnToUint256(weightedSigners.nonce)
+    }));
+
+    // Compile calldata with signers array and optional operator
+    const calldata = CallData.compile([
+        formattedSigners, // Array<WeightedSigners>
+        operator ? operator : 0  // Option<ContractAddress> - use 0 for None
+    ]);
+
+    const hexCalldata = calldata.map(item => num.toHex(item));
+
+    // Handle estimate mode
+    if (estimate) {
+        return handleGasEstimation(chain, options, gatewayConfig.address, 'init_signers', hexCalldata);
+    }
+
+    if (offline) {
+        const calls: Call[] = [{
+            contractAddress: gatewayConfig.address,
+            entrypoint: 'init_signers',
+            calldata: hexCalldata
+        }];
+        return handleOfflineTransaction(options, chain.name, calls, 'init_signers');
+    }
+
+    // Online execution
+    const provider = getStarknetProvider(chain);
+    const account = getStarknetAccount(privateKey, accountAddress, provider);
+    const gatewayContract = await getGatewayContract(provider, gatewayConfig.address, account);
+
+    const response = await gatewayContract.init_signers(calldata);
+    await account.waitForTransaction(response.transaction_hash);
+
+    console.log(`Signers initialized successfully!`);
+    console.log(`Transaction Hash: ${response.transaction_hash}`);
+
+    return response;
+}
+
 async function transferOperatorship(
     config: Config,
     chain: ChainConfig & { name: string },
@@ -763,6 +834,39 @@ async function main(): Promise<void> {
         }
     });
 
+    // Init signers command
+    const initSignersCmd = program
+        .command('init-signers')
+        .description('Initialize gateway signers (can only be called once after deployment or upgrade)')
+        .argument('<signers>', 'array of WeightedSigners JSON')
+        .option('--operator <address>', 'optional operator address');
+
+    addStarknetOptions(initSignersCmd, { offlineSupport: true });
+
+    initSignersCmd.action(async (signers, options) => {
+        validateStarknetOptions(options.env, options.offline, options.privateKey, options.accountAddress);
+        const config = loadConfig(options.env);
+
+        const chain = config.chains[STARKNET_CHAIN];
+        if (!chain) {
+            throw new Error(`Chain ${STARKNET_CHAIN} not found in environment ${options.env}`);
+        }
+
+        try {
+            const cmdOptions = {
+                ...options,
+                signers: JSON.parse(signers),
+                operator: options.operator || null,
+            };
+
+            const result = await initSigners(config, { ...chain, name: STARKNET_CHAIN }, cmdOptions);
+            console.log(`✅ init-signers completed for ${STARKNET_CHAIN}\n`);
+        } catch (error) {
+            console.error(`❌ init-signers failed for ${STARKNET_CHAIN}: ${error.message}\n`);
+            process.exit(1);
+        }
+    });
+
     program.parse();
 }
 
@@ -780,6 +884,7 @@ export {
     rotateSigners,
     isMessageApproved,
     isMessageExecuted,
+    initSigners,
     transferOperatorship,
     getOperator,
     getEpoch,

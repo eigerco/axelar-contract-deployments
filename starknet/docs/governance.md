@@ -9,18 +9,46 @@ This document contains example commands for testing the Axelar Governance contra
 - Private key and account address for write operations
 - Governance contract deployed and configured in the environment
 
-## Environment Variables
+## Environment Vars
 
 Set your account information through environment variables:
 
 ```bash
-export STARKNET_PRIVATE_KEY="your_private_key_here"
-export STARKNET_ACCOUNT_ADDRESS="your_account_address_here"
+# For gas estimation (online)
+export ENV=testnet
+export STARKNET_PRIVATE_KEY=0x...
+export STARKNET_ACCOUNT_ADDRESS=0x...
+
+# For offline signing
+# No network access required
+# Ledger must be connected
 ```
 
-With these environment variables set, you can run commands without the `--privateKey` and `--accountAddress` flags.
+## Command Options
 
-## Read-Only Commands
+```
+Usage: governance [options] [command]
+
+Interact with Axelar Governance on Starknet
+
+Options:
+  -V, --version                                                                                   output the version number
+  -h, --help                                                                                      display help for command
+
+Commands:
+  governance-chain [options]                                                                      Get the governance chain name
+  governance-address [options]                                                                    Get the governance address
+  get-proposal-eta [options] <target> <entryPointSelector> <callData> <nativeValue>               Get the ETA of a proposal
+  get-time-lock [options] <hash>                                                                  Get the time lock for a given hash
+  is-operator-proposal-approved [options] <target> <entryPointSelector> <callData> <nativeValue>  Check if an operator proposal is approved
+  execute-proposal [options] <target> <entryPointSelector> <callData> <nativeValue>               Execute a governance proposal
+  execute-operator-proposal [options] <target> <entryPointSelector> <callData> <nativeValue>      Execute an operator proposal
+  withdraw [options] <recipient> <amount>                                                         Withdraw native tokens from the governance contract
+  transfer-operatorship [options] <newOperator>                                                   Transfer governance operatorship
+  help [command]                                                                                  display help for command
+```
+
+## Read Commands
 
 ### Get Governance Chain
 
@@ -77,7 +105,7 @@ npx ts-node governance.ts is-operator-proposal-approved \
   --env testnet
 ```
 
-## Write Commands
+## Write Commands (Support --offline and --estimate)
 
 All write commands support:
 - `--offline` flag for offline transaction generation
@@ -164,83 +192,37 @@ npx ts-node governance.ts transfer-operatorship \
   --env testnet
 ```
 
-## Complex Examples
+## Output
 
-### Execute a Contract Upgrade Proposal
+Successful governance operations will show:
+- **Read Operations**: Current values (governance chain, address, proposal status, time locks)
+- **Write Operations**: Transaction hash and execution confirmation
+- **Proposal Operations**: Execution result and any returned data
+- **Gas Estimation**: Estimated gas parameters for offline transactions
 
-This example shows how to execute a proposal to upgrade a contract:
+## Common Issues
 
-```bash
-# Entry point selector for "upgrade" function
-# You can calculate this using: starknet-keccak "upgrade"
-UPGRADE_SELECTOR="0x0280bb2099800026f90c334a3a94888255f261cae22a5daa429ad7c6ab8fadf"
+**"Proposal not found or expired"**
+- Solution: Verify proposal parameters and ensure it hasn't expired
 
-# New class hash for the upgrade
-NEW_CLASS_HASH="0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+**"Only governance can execute this action"**
+- Solution: Ensure the calling account has governance permissions
 
-# Execute the proposal
-npx ts-node governance.ts execute-proposal \
-  "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7" \
-  "$UPGRADE_SELECTOR" \
-  "[\"$NEW_CLASS_HASH\"]" \
-  "0" \
-  --privateKey $STARKNET_PRIVATE_KEY \
-  --accountAddress $STARKNET_ACCOUNT_ADDRESS \
-  --env testnet
-```
+**"Invalid proposal parameters"**
+- Solution: Check target address, entry point selector, and calldata format
 
-### Execute a Multi-Parameter Function Call
+**"Time lock not expired"**
+- Solution: Wait for the time lock period to expire before execution
 
-This example shows how to call a function with multiple parameters:
+**"Insufficient operatorship permissions"**
+- Solution: Verify the account has operator privileges for operator proposals
 
-```bash
-# Entry point selector for "set_parameters" function
-SET_PARAMS_SELECTOR="0x123456789abcdef"
+## Notes
 
-# Parameters: threshold (u256), timeout (u64), addresses (array)
-# Note: u256 values need to be split into low and high parts
-npx ts-node governance.ts execute-proposal \
-  "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7" \
-  "$SET_PARAMS_SELECTOR" \
-  '["0x5", "0x0", "0x3600", "0x3", "0xaddr1", "0xaddr2", "0xaddr3"]' \
-  "0" \
-  --privateKey $STARKNET_PRIVATE_KEY \
-  --accountAddress $STARKNET_ACCOUNT_ADDRESS \
-  --env testnet
-```
-
-## Notes on Data Serialization
-
-1. **ByteArray**: Strings are automatically converted to ByteArray format using `byteArray.byteArrayFromString()`
-
-2. **u256**: Large numbers should be passed as strings and are converted using `uint256.bnToUint256()`. For example:
-   - "1000000000000000000" for 1 ETH
-   - "0" for zero value
-
-3. **ContractAddress**: Pass as hex strings (e.g., "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7")
-
-4. **felt252**: Pass as hex strings for selectors and hashes
-
-5. **Span<felt252>**: Pass as JSON arrays of hex strings (e.g., '["0x123", "0x456"]')
-
-6. **Call Data Compilation**: The script uses `CallData.compile()` to properly serialize all parameters before sending to the contract
-
-
-## Offline Workflow
-
-For mainnet operations with hardware wallets:
-
-1. Generate unsigned transaction (requires account address via env var or flag):
-```bash
-npx ts-node governance.ts execute-proposal \
-  "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7" \
-  "0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e" \
-  '["0x123"]' \
-  "0" \
-  --env mainnet \
-  --offline
-```
-
-2. Sign the transaction offline using the sign-transaction.ts script
-3. Combine signatures using combine-signatures.ts
-4. Broadcast using broadcast-transaction.ts
+- Replace all placeholder addresses and values with actual governance data
+- For testnet, you can get test ETH from the Starknet faucet
+- Governance operations require specific permissions and time locks
+- Entry point selectors can be calculated using Cairo/Starknet.js selector functions
+- Calldata must be properly formatted as Cairo-serialized felt252 arrays
+- For offline transactions, follow up with the signing and broadcasting workflow
+- Governance proposals often have time delays and require careful parameter verification
