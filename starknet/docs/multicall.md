@@ -117,28 +117,6 @@ npx ts-node starknet/multicall.ts examples/multicall-example.json \
 
 The remaining steps (sign, combine signatures, broadcast) follow the same workflow as single transactions.
 
-## Command Options
-
-### Required Options
-- First argument: Path to multicall configuration JSON file
-- `--env`: Environment (testnet, mainnet)
-- `--accountAddress`: Account address for transaction
-
-### Optional Options
-- `--privateKey`: Private key (required for online, not for offline)
-- `--offline`: Generate unsigned transaction file
-- `--estimate`: Estimate gas and display CLI arguments
-- `--nonce`: Account nonce (required for offline)
-- `--yes`: Skip confirmation prompts
-
-### Gas Options (Offline Only)
-- `--l1GasMaxAmount`: Maximum L1 gas amount
-- `--l1GasMaxPricePerUnit`: Maximum L1 gas price per unit
-- `--l2GasMaxAmount`: Maximum L2 gas amount
-- `--l2GasMaxPricePerUnit`: Maximum L2 gas price per unit
-- `--l1DataMaxAmount`: Maximum L1 data amount
-- `--l1DataMaxPricePerUnit`: Maximum L1 data price per unit
-
 ## Common Multicall Use Cases
 
 ### Gateway + Gas Service
@@ -184,41 +162,6 @@ Combine governance operations with contract calls for atomic execution.
 
 ### Gas Optimization
 Reduce transaction count and save on gas fees by batching related operations.
-
-## Testing Workflow
-
-1. **Create configuration file**:
-   ```bash
-   # Create a test multicall configuration
-   cat > test-multicall.json << EOF
-   {
-     "calls": [
-       {
-         "contract_address": "0xYOUR_CONTRACT",
-         "entrypoint": "function_name",
-         "calldata": ["param1", "param2"]
-       }
-     ]
-   }
-   EOF
-   ```
-
-2. **Test with gas estimation**:
-   ```bash
-   npx ts-node starknet/multicall.ts test-multicall.json \
-     --env testnet \
-     --estimate \
-     --privateKey $STARKNET_PRIVATE_KEY \
-     --accountAddress $STARKNET_ACCOUNT_ADDRESS
-   ```
-
-3. **Execute multicall**:
-   ```bash
-   npx ts-node starknet/multicall.ts test-multicall.json \
-     --env testnet \
-     --privateKey $STARKNET_PRIVATE_KEY \
-     --accountAddress $STARKNET_ACCOUNT_ADDRESS
-   ```
 
 ## Output
 

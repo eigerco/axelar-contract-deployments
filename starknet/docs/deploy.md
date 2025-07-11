@@ -54,63 +54,49 @@ Options:
   -h, --help                                       display help for command
 ```
 
-## Deployment Workflow
+## Write Commands (Support --offline and --estimate)
 
-### For Testnet (Online)
+### Basic Contract Deployment
 
-1. **Ensure contract is declared**:
-   ```bash
-   # Contract must be declared first
-   npx ts-node starknet/declare-contract.ts --contractConfigName MyContract ...
-   ```
+```bash
+npx ts-node starknet/deploy-contract.ts \
+  --env testnet \
+  --contractConfigName MyContract \
+  --constructorCalldata '["0xparam1", "0xparam2"]' \
+  --salt 0x123 \
+  --privateKey $STARKNET_PRIVATE_KEY \
+  --accountAddress $STARKNET_ACCOUNT_ADDRESS
+```
 
-2. **Deploy the contract**:
-   ```bash
-   npx ts-node starknet/deploy-contract.ts \
-     --env testnet \
-     --contractConfigName MyContract \
-     --constructorCalldata '["0xparam1", "0xparam2"]' \
-     --salt 0x123 \
-     --privateKey $STARKNET_PRIVATE_KEY \
-     --accountAddress $STARKNET_ACCOUNT_ADDRESS
-   ```
+### Deployment with Gas Estimation
 
-### For Mainnet (Offline)
+```bash
+npx ts-node starknet/deploy-contract.ts \
+  --env mainnet \
+  --contractConfigName MyContract \
+  --constructorCalldata '["0xparam1"]' \
+  --salt 0x123 \
+  --estimate \
+  --privateKey $STARKNET_PRIVATE_KEY \
+  --accountAddress $STARKNET_ACCOUNT_ADDRESS
+```
 
-1. **Estimate gas on online machine**:
-   ```bash
-   npx ts-node starknet/deploy-contract.ts \
-     --env mainnet \
-     --contractConfigName MyContract \
-     --constructorCalldata '["0xparam1"]' \
-     --salt 0x123 \
-     --estimate \
-     --privateKey $STARKNET_PRIVATE_KEY \
-     --accountAddress $STARKNET_ACCOUNT_ADDRESS
-   ```
+### Offline Transaction Generation
 
-2. **Copy gas parameters from output**:
-   ```
-   --l1GasMaxAmount 50000 --l1GasMaxPricePerUnit 100000000000 --l2GasMaxAmount 1000000 --l2GasMaxPricePerUnit 1000000000
-   ```
-
-3. **Generate unsigned transaction on offline machine**:
-   ```bash
-   npx ts-node starknet/deploy-contract.ts \
-     --env mainnet \
-     --contractConfigName MyContract \
-     --constructorCalldata '["0xparam1"]' \
-     --salt 0x123 \
-     --offline \
-     --nonce 5 \
-     --accountAddress $STARKNET_ACCOUNT_ADDRESS \
-     --l1GasMaxAmount 50000 \
-     --l1GasMaxPricePerUnit 100000000000 \
-     --l2GasMaxAmount 1000000 \
-     --l2GasMaxPricePerUnit 1000000000
-   ```
-
-4. **Follow offline signing workflow** (see main offline.md)
+```bash
+npx ts-node starknet/deploy-contract.ts \
+  --env mainnet \
+  --contractConfigName MyContract \
+  --constructorCalldata '["0xparam1"]' \
+  --salt 0x123 \
+  --offline \
+  --nonce 5 \
+  --accountAddress $STARKNET_ACCOUNT_ADDRESS \
+  --l1GasMaxAmount 50000 \
+  --l1GasMaxPricePerUnit 100000000000 \
+  --l2GasMaxAmount 1000000 \
+  --l2GasMaxPricePerUnit 1000000000
+```
 
 ## Constructor Calldata Format
 

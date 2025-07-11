@@ -200,6 +200,30 @@ npx ts-node gateway.ts get-operator --env testnet
 npx ts-node gateway.ts get-epoch --env testnet
 ```
 
+## Output
+
+Successful gateway operations will show:
+- Transaction Hash: The transaction hash for write operations
+- Result: Operation-specific results (e.g., operator address, epoch number)
+- Gas consumption details for transactions
+
+## Common Issues
+
+**"Invalid JSON format in messages or proof"**
+- Solution: Ensure JSON strings are properly formatted and escaped
+
+**"Contract address not found"**
+- Solution: Verify the gateway contract is deployed and configured correctly
+
+**"Invalid signature format"**
+- Solution: Signatures must be arrays of byte arrays, e.g., `[[1,2,3,4], [5,6,7,8]]`
+
+**"Insufficient threshold for signatures"**
+- Solution: Ensure enough valid signatures are provided to meet the threshold
+
+**"Message already approved/executed"**
+- Solution: Check message status before attempting to approve or execute
+
 ## Notes
 
 - Replace all placeholder addresses and values with actual test data

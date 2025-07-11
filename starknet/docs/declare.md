@@ -26,9 +26,6 @@ export ENV=testnet
 export STARKNET_PRIVATE_KEY=0x...
 export STARKNET_ACCOUNT_ADDRESS=0x...
 
-# For offline signing
-# No network access required
-# Ledger must be connected
 ```
 
 ## Command Options
@@ -49,7 +46,7 @@ Options:
   -h, --help                                 display help for command
 ```
 
-## Declare Contract Command
+## Declare Contract Commands
 
 ### Basic Declaration
 
@@ -73,29 +70,6 @@ npx ts-node starknet/declare-contract.ts \
   --accountAddress $STARKNET_ACCOUNT_ADDRESS \
   --yes
 ```
-
-## Declaring Workflow
-
-1. **Verify account has funds**:
-   ```bash
-   # Check your account balance before declaring
-   starkli account fetch $STARKNET_ACCOUNT_ADDRESS --rpc $RPC_URL
-   ```
-
-2. **Declare the contract**:
-   ```bash
-   npx ts-node starknet/declare-contract.ts \
-     --env testnet \
-     --contractConfigName YourContract \
-     --contractPath ./path/to/YourContract.contract_class.json \
-     --privateKey $STARKNET_PRIVATE_KEY \
-     --accountAddress $STARKNET_ACCOUNT_ADDRESS
-   ```
-
-3. **Verify declaration**:
-   - Check the class hash in a Starknet explorer of your choosing
-   - Verify the class hash is saved in config
-   - The class hash can now be used for deployments
 
 ## Output
 

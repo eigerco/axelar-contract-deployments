@@ -56,7 +56,9 @@ Commands:
   help [command]                display help for command
 ```
 
-## Get Ledger Public Key
+## Read Commands
+
+### Get Ledger Public Key
 
 Retrieve your Ledger's public key for use as a multisig signer (Ledger must be connected and app opened):
 
@@ -64,8 +66,6 @@ Retrieve your Ledger's public key for use as a multisig signer (Ledger must be c
 npx ts-node starknet/multisig.ts get-ledger-pubkey \
   --ledger-path "m/44'/9004'/0'/0/0"
 ```
-
-## Read Operations
 
 ### Get Threshold
 
@@ -93,7 +93,7 @@ npx ts-node starknet/multisig.ts is-signer \
   --env testnet
 ```
 
-## Multisig Management Operations
+## Write Commands (Support --offline and --estimate)
 
 All management operations support both online and offline modes with gas estimation.
 
@@ -171,11 +171,11 @@ npx ts-node starknet/multisig.ts replace-signer \
   --accountAddress 0x...
 ```
 
-## Guardian Recovery Operations
+### Guardian Recovery Operations
 
 Manage guardian-based account recovery for emergency situations.
 
-### Enable/Disable Guardian Recovery
+#### Enable/Disable Guardian Recovery
 
 ```bash
 npx ts-node starknet/multisig.ts toggle-escape \
@@ -189,7 +189,7 @@ npx ts-node starknet/multisig.ts toggle-escape \
   --accountAddress 0x...
 ```
 
-### Get Guardian
+#### Get Guardian
 
 ```bash
 npx ts-node starknet/multisig.ts get-guardian \
@@ -197,7 +197,7 @@ npx ts-node starknet/multisig.ts get-guardian \
   --env testnet
 ```
 
-### Trigger Escape (Guardian Only)
+#### Trigger Escape (Guardian Only)
 
 ```bash
 npx ts-node starknet/multisig.ts trigger-escape \
@@ -209,7 +209,7 @@ npx ts-node starknet/multisig.ts trigger-escape \
   --accountAddress 0x...
 ```
 
-### Execute Escape (After Security Period)
+#### Execute Escape (After Security Period)
 
 ```bash
 npx ts-node starknet/multisig.ts execute-escape \
@@ -221,7 +221,7 @@ npx ts-node starknet/multisig.ts execute-escape \
   --accountAddress 0x...
 ```
 
-### Cancel Escape
+#### Cancel Escape
 
 ```bash
 npx ts-node starknet/multisig.ts cancel-escape \
@@ -231,7 +231,7 @@ npx ts-node starknet/multisig.ts cancel-escape \
   --accountAddress 0x...
 ```
 
-### Get Escape Status
+#### Get Escape Status
 
 ```bash
 npx ts-node starknet/multisig.ts get-escape \
@@ -246,43 +246,13 @@ npx ts-node starknet/multisig.ts get-escape \
 - `secp256r1`: P-256 curve signers
 - `eip191`: EIP-191 compliant signers
 
-## Multisig Workflow Example
+## Output
 
-### 1. Check Current State
-
-```bash
-npx ts-node starknet/multisig.ts get-threshold --contract-address 0x... --env testnet
-npx ts-node starknet/multisig.ts get-signers --contract-address 0x... --env testnet
-```
-
-### 2. Generate Offline Transaction (Mainnet)
-
-```bash
-# Estimate gas first
-npx ts-node starknet/multisig.ts add-signers \
-  --contract-address 0x... \
-  --threshold 2 \
-  --signers 0xNewSigner \
-  --estimate \
-  --env mainnet \
-  --privateKey 0x... \
-  --accountAddress 0x...
-
-# Generate unsigned transaction
-npx ts-node starknet/multisig.ts add-signers \
-  --contract-address 0x... \
-  --threshold 2 \
-  --signers 0xNewSigner \
-  --offline \
-  --nonce 5 \
-  --accountAddress 0x... \
-  --l1GasMaxAmount 50000 \
-  --l1GasMaxPricePerUnit 100000000000
-```
-
-### 3. Sign and Broadcast
-
-Follow the standard offline workflow for signing and broadcasting (see main README).
+Successful multisig operations will show:
+- **Read Operations**: Current values (threshold, signers, guardian status)
+- **Write Operations**: Transaction hash and updated configuration
+- **Gas Estimation**: Estimated gas parameters for offline transactions
+- **Ledger Operations**: Public key information for hardware wallet setup
 
 ## Debugging Tools
 

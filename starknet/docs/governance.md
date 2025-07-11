@@ -9,7 +9,7 @@ This document contains example commands for testing the Axelar Governance contra
 - Private key and account address for write operations
 - Governance contract deployed and configured in the environment
 
-## Environment Variables
+## Environment Vars
 
 Set your account information through environment variables:
 
@@ -48,7 +48,7 @@ Commands:
   help [command]                                                                                  display help for command
 ```
 
-## Read-Only Commands
+## Read Commands
 
 ### Get Governance Chain
 
@@ -105,7 +105,7 @@ npx ts-node governance.ts is-operator-proposal-approved \
   --env testnet
 ```
 
-## Write Commands
+## Write Commands (Support --offline and --estimate)
 
 All write commands support:
 - `--offline` flag for offline transaction generation
@@ -192,66 +192,37 @@ npx ts-node governance.ts transfer-operatorship \
   --env testnet
 ```
 
-## Complex Examples
+## Output
 
-### Execute a Contract Upgrade Proposal
+Successful governance operations will show:
+- **Read Operations**: Current values (governance chain, address, proposal status, time locks)
+- **Write Operations**: Transaction hash and execution confirmation
+- **Proposal Operations**: Execution result and any returned data
+- **Gas Estimation**: Estimated gas parameters for offline transactions
 
-This example shows how to execute a proposal to upgrade a contract:
+## Common Issues
 
-```bash
-# Entry point selector for "upgrade" function
-# You can calculate this using: starknet-keccak "upgrade"
-UPGRADE_SELECTOR="0x0280bb2099800026f90c334a3a94888255f261cae22a5daa429ad7c6ab8fadf"
+**"Proposal not found or expired"**
+- Solution: Verify proposal parameters and ensure it hasn't expired
 
-# New class hash for the upgrade
-NEW_CLASS_HASH="0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+**"Only governance can execute this action"**
+- Solution: Ensure the calling account has governance permissions
 
-# Execute the proposal
-npx ts-node governance.ts execute-proposal \
-  "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7" \
-  "$UPGRADE_SELECTOR" \
-  "[\"$NEW_CLASS_HASH\"]" \
-  "0" \
-  --privateKey $STARKNET_PRIVATE_KEY \
-  --accountAddress $STARKNET_ACCOUNT_ADDRESS \
-  --env testnet
-```
+**"Invalid proposal parameters"**
+- Solution: Check target address, entry point selector, and calldata format
 
-### Execute a Multi-Parameter Function Call
+**"Time lock not expired"**
+- Solution: Wait for the time lock period to expire before execution
 
-This example shows how to call a function with multiple parameters:
+**"Insufficient operatorship permissions"**
+- Solution: Verify the account has operator privileges for operator proposals
 
-```bash
-# Entry point selector for "set_parameters" function
-SET_PARAMS_SELECTOR="0x123456789abcdef"
+## Notes
 
-# Parameters: threshold (u256), timeout (u64), addresses (array)
-# Note: u256 values need to be split into low and high parts
-npx ts-node governance.ts execute-proposal \
-  "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7" \
-  "$SET_PARAMS_SELECTOR" \
-  '["0x5", "0x0", "0x3600", "0x3", "0xaddr1", "0xaddr2", "0xaddr3"]' \
-  "0" \
-  --privateKey $STARKNET_PRIVATE_KEY \
-  --accountAddress $STARKNET_ACCOUNT_ADDRESS \
-  --env testnet
-```
-
-## Offline Workflow
-
-For mainnet operations with hardware wallets:
-
-1. Generate unsigned transaction (requires account address via env var or flag):
-```bash
-npx ts-node governance.ts execute-proposal \
-  "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7" \
-  "0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e" \
-  '["0x123"]' \
-  "0" \
-  --env mainnet \
-  --offline
-```
-
-2. Sign the transaction offline using the sign-transaction.ts script
-3. Combine signatures using combine-signatures.ts
-4. Broadcast using broadcast-transaction.ts
+- Replace all placeholder addresses and values with actual governance data
+- For testnet, you can get test ETH from the Starknet faucet
+- Governance operations require specific permissions and time locks
+- Entry point selectors can be calculated using Cairo/Starknet.js selector functions
+- Calldata must be properly formatted as Cairo-serialized felt252 arrays
+- For offline transactions, follow up with the signing and broadcasting workflow
+- Governance proposals often have time delays and require careful parameter verification

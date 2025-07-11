@@ -102,6 +102,27 @@ npx ts-node operators.ts execute-contract "0x049d36570d4e46f48e99674bd3fcc84644d
 npx ts-node operators.ts is-operator "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7" --env testnet
 ```
 
+## Output
+
+Successful operations will show:
+- **Read Operations**: Boolean result (true/false for is-operator)
+- **Write Operations**: Transaction hash and confirmation
+- **Gas Estimation**: Estimated gas parameters for offline transactions
+
+## Common Issues
+
+**"Only operators can perform this action"**
+- Solution: Ensure the calling account is already an operator
+
+**"Invalid operator address format"**
+- Solution: Verify address is in correct hex format (0x...)
+
+**"Contract address not found"**
+- Solution: Ensure the operators contract is deployed and configured correctly
+
+**"Invalid function name in execute-contract"**
+- Solution: Verify the function name exists in the target contract
+
 ## Notes
 
 - Replace all placeholder addresses with actual test data

@@ -218,6 +218,31 @@ npx ts-node gas-service.ts pay-gas \
   --env testnet \
   --offline
 
+## Output
+
+Successful gas service operations will show:
+- **Collect/Refund Operations**: Transaction hash and collection/refund confirmation
+- **Pay Gas Operations**: Transaction hash and gas payment event details
+- **Add Gas Operations**: Transaction hash and additional gas payment confirmation
+- **Gas Estimation**: Estimated gas parameters for offline transactions
+
+## Common Issues
+
+**"Only gas collector can perform this action"**
+- Solution: Ensure the calling account has gas collector authority (for collect/refund operations)
+
+**"Insufficient token allowance"**
+- Solution: Approve the gas service contract to spend your tokens before paying gas
+
+**"Invalid transaction hash format"**
+- Solution: Verify txHash is in correct felt252 format
+
+**"Token address not supported"**
+- Solution: Ensure the token is supported by the gas service (currently STRK only)
+
+**"Invalid amount format"**
+- Solution: Verify amount is a valid number in the token's smallest unit
+
 ## Notes
 
 - Only the gas collector authority can call `collect` and `refund` functions
