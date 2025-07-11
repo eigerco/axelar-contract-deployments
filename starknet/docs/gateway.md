@@ -48,7 +48,7 @@ If you prefer using env vars, instead of --env --privateKey and --accountAddress
 
 ```bash
 # For gas estimation (online)
-export STARKNET_ENV=testnet
+export ENV=testnet
 export STARKNET_PRIVATE_KEY=0x...
 export STARKNET_ACCOUNT_ADDRESS=0x...
 

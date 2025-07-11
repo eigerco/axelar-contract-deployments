@@ -17,7 +17,7 @@ If you prefer using env vars, instead of --env --privateKey and --accountAddress
 
 ```bash
 # For gas estimation (online)
-export STARKNET_ENV=testnet
+export ENV=testnet
 export STARKNET_PRIVATE_KEY=0x...
 export STARKNET_ACCOUNT_ADDRESS=0x...
 
@@ -70,14 +70,15 @@ npx ts-node starknet/upgrade-contract.ts \
 ## Command Options
 
 ### Required Options
-- `--env`: Environment (testnet, mainnet)
+
+- `--env`: Environment (testnet, mainnet) - if not env var has been set
 - `--contractConfigName`: Contract configuration to upgrade
 - `--classHash`: New class hash for upgrade
-- `--accountAddress`: Account address for transaction
+- `--accountAddress`: Account address for transaction - if not env var has been set
 
 ### Optional Options
 - `--contractAddress`: Contract address (uses config if not provided)
-- `--privateKey`: Private key (required for online, not for offline)
+- `--privateKey`: Private key (required for online, not for offline) - if not env var has been set
 - `--offline`: Generate unsigned transaction file
 - `--estimate`: Estimate gas and display CLI arguments
 - `--nonce`: Account nonce (required for offline)

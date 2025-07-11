@@ -16,7 +16,7 @@ If you prefer using env vars, instead of --env --privateKey and --accountAddress
 
 ```bash
 # For gas estimation (online)
-export STARKNET_ENV=testnet
+export ENV=testnet
 export STARKNET_PRIVATE_KEY=0x...
 export STARKNET_ACCOUNT_ADDRESS=0x...
 
@@ -255,11 +255,14 @@ Follow the standard offline workflow for signing and broadcasting (see main READ
 
 ## Command Options
 
-### Common Options
+### Required Options
+
+If not env vars have been set:
+
 - `--contract-address`: The multisig contract address
-- `--env`: Environment (testnet, mainnet)
-- `--privateKey`: Private key (for online operations)
-- `--accountAddress`: Account address for transaction
+- `--env`: Environment (testnet, mainnet) - if not env var has been set
+- `--privateKey`: Private key (for online operations) - if not env var has been set
+- `--accountAddress`: Account address for transaction - if not env var has been set
 
 ### Signer Management Options
 - `--threshold`: Required number of signatures

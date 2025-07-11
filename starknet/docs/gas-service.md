@@ -7,7 +7,7 @@ This file contains example commands for testing all gas service functions. Repla
 Make sure you have:
 - A funded account on testnet
 - The gas service contract deployed
-- Any ERC20 token for testing gas payments
+- Any supported ERC20 token for testing gas payments (currently STRK only)
 - Valid test data for each command
 
 ## Data Structure Notes
@@ -16,7 +16,8 @@ Make sure you have:
 ```json
 [
   {
-    "contract_address": "0x...",    // ERC20 token contract address
+    "contract_address": "0x...",    // ERC20 token contract address (currently STRK only)
+
     "amount": "1000000"             // Amount to collect (will be converted to u256)
   }
 ]
@@ -201,7 +202,7 @@ npx ts-node gas-service.ts pay-gas \
 
 ## Testing Workflow
 
-1. Pick the ERC20 token you want to pay with
+1. Pick the ERC20 token you want to pay with (currently only STRK supported)
 
 2. **Fund the gas service contract** with test tokens:
    ```bash

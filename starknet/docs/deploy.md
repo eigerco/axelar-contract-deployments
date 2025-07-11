@@ -16,7 +16,7 @@ If you prefer using env vars, instead of --env --privateKey and --accountAddress
 
 ```bash
 # For gas estimation (online)
-export STARKNET_ENV=testnet
+export ENV=testnet
 export STARKNET_PRIVATE_KEY=0x...
 export STARKNET_ACCOUNT_ADDRESS=0x...
 
@@ -28,14 +28,15 @@ export STARKNET_ACCOUNT_ADDRESS=0x...
 ## Command Options
 
 ### Required Options
-- `--env`: Environment (testnet, mainnet)
+
+- `--env`: Environment (testnet, mainnet) - if not env var has been set
 - `--contractConfigName`: Contract configuration name (must exist in config)
-- `--accountAddress`: Account address for deployment
+- `--accountAddress`: Account address for deployment - if not env var has been set
 
 ### Optional Options
 - `--constructorCalldata`: Constructor arguments as JSON array (default: '[]')
 - `--salt`: Salt for deterministic deployment address
-- `--privateKey`: Private key (required for online, not for offline)
+- `--privateKey`: Private key (required for online, not for offline) - if not env var has been set
 - `--offline`: Generate unsigned transaction file
 - `--estimate`: Estimate gas and display CLI arguments
 - `--nonce`: Account nonce (required for offline)
