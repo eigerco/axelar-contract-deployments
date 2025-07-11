@@ -14,11 +14,39 @@ This document contains example commands for testing the Axelar Governance contra
 Set your account information through environment variables:
 
 ```bash
-export STARKNET_PRIVATE_KEY="your_private_key_here"
-export STARKNET_ACCOUNT_ADDRESS="your_account_address_here"
+# For gas estimation (online)
+export ENV=testnet
+export STARKNET_PRIVATE_KEY=0x...
+export STARKNET_ACCOUNT_ADDRESS=0x...
+
+# For offline signing
+# No network access required
+# Ledger must be connected
 ```
 
-With these environment variables set, you can run commands without the `--privateKey` and `--accountAddress` flags.
+## Command Options
+
+```
+Usage: governance [options] [command]
+
+Interact with Axelar Governance on Starknet
+
+Options:
+  -V, --version                                                                                   output the version number
+  -h, --help                                                                                      display help for command
+
+Commands:
+  governance-chain [options]                                                                      Get the governance chain name
+  governance-address [options]                                                                    Get the governance address
+  get-proposal-eta [options] <target> <entryPointSelector> <callData> <nativeValue>               Get the ETA of a proposal
+  get-time-lock [options] <hash>                                                                  Get the time lock for a given hash
+  is-operator-proposal-approved [options] <target> <entryPointSelector> <callData> <nativeValue>  Check if an operator proposal is approved
+  execute-proposal [options] <target> <entryPointSelector> <callData> <nativeValue>               Execute a governance proposal
+  execute-operator-proposal [options] <target> <entryPointSelector> <callData> <nativeValue>      Execute an operator proposal
+  withdraw [options] <recipient> <amount>                                                         Withdraw native tokens from the governance contract
+  transfer-operatorship [options] <newOperator>                                                   Transfer governance operatorship
+  help [command]                                                                                  display help for command
+```
 
 ## Read-Only Commands
 

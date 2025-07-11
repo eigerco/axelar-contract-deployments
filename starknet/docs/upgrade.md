@@ -26,6 +26,35 @@ export STARKNET_ACCOUNT_ADDRESS=0x...
 # Ledger must be connected
 ```
 
+## Command Options
+
+```
+Usage: upgrade-contract [options]
+
+Upgrade Starknet contracts
+
+Options:
+  -V, --version                                    output the version number
+  -e, --env <env>                                  environment (choices: "devnet-amplifier", "mainnet", "stagenet", "testnet", default: "testnet", env: ENV)
+  -y, --yes                                        skip deployment prompt confirmation (env: YES)
+  -p, --privateKey < privateKey >                  private key for Starknet account(testnet only, not required for offline tx generation) (env: STARKNET_PRIVATE_KEY)
+  --accountAddress <accountAddress>                Starknet account address (env: STARKNET_ACCOUNT_ADDRESS)
+  --offline                                        generate unsigned transaction for offline signing (env: OFFLINE)
+  --estimate                                       estimate gas for this transaction and display CLI args to copy (env: ESTIMATE)
+  --outputDir <outputDir>                          output directory for unsigned transactions (required for --offline) (default: "./starknet-offline-txs", env: OUTPUT_DIR)
+  --nonce <nonce>                                  nonce for offline transaction generation (required for --offline) (env: NONCE)
+  --contractConfigName <contractConfigName>        name of the contract configuration to use
+  --classHash <classHash>                          new class hash for contract upgrade
+  --contractAddress <contractAddress>              contract address (optional if already in config) (env: CONTRACT_ADDRESS)
+  --l1GasMaxAmount <l1GasMaxAmount>                maximum L1 gas amount (default: 0) (default: "0", env: L1_GAS_MAX_AMOUNT)
+  --l1GasMaxPricePerUnit <l1GasMaxPricePerUnit>    maximum L1 gas price per unit in wei (default: 0) (default: "0", env: L1_GAS_MAX_PRICE_PER_UNIT)
+  --l2GasMaxAmount <l2GasMaxAmount>                maximum L2 gas amount (default: 0) (default: "0", env: L2_GAS_MAX_AMOUNT)
+  --l2GasMaxPricePerUnit <l2GasMaxPricePerUnit>    maximum L2 gas price per unit in wei (default: 0) (default: "0", env: L2_GAS_MAX_PRICE_PER_UNIT)
+  --l1DataMaxAmount <l1DataMaxAmount>              maximum L1 data amount (default: 0) (default: "0", env: L1_DATA_MAX_AMOUNT)
+  --l1DataMaxPricePerUnit <l1DataMaxPricePerUnit>  maximum L1 data price per unit in wei (default: 0) (default: "0", env: L1_DATA_MAX_PRICE_PER_UNIT)
+  -h, --help                                       display help for command
+```
+
 ## Write Commands (Support --offline and --estimate)
 
 ### Online Upgrade (Testnet)
@@ -153,6 +182,9 @@ npx ts-node starknet/upgrade-contract.ts \
 5. **Follow offline signing workflow** (see main README)
 
 ## Important Considerations
+
+### Gateway Upgradability
+- After upgrading the gateway contract, you can call init_signers again with new signers, but only once.
 
 ### Upgrade Compatibility
 - New contract must be compatible with existing storage layout

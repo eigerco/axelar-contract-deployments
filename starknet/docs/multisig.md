@@ -25,6 +25,37 @@ export STARKNET_ACCOUNT_ADDRESS=0x...
 # Ledger must be connected
 ```
 
+## Command Options
+
+```
+Usage: multisig [options] [command]
+
+Control Argent multisig v0.2.0 account on Starknet
+
+Options:
+  -V, --version                 output the version number
+  -h, --help                    display help for command
+
+Commands:
+  get-ledger-pubkey [options]   Get Ledger public key for a given derivation
+                                path
+  get-threshold [options]       Get current multisig threshold
+  get-signers [options]         Get list of signer GUIDs
+  is-signer [options]           Check if an address is a signer
+  change-threshold [options]    Change multisig threshold
+  add-signers [options]         Add new signers with new threshold
+  remove-signers [options]      Remove signers with new threshold
+  replace-signer [options]      Replace one signer with another
+  toggle-escape [options]       Enable/disable guardian recovery
+  get-guardian [options]        Get current guardian address
+  trigger-escape [options]      Trigger escape/recovery (guardian only)
+  execute-escape [options]      Execute escape after security period
+  cancel-escape [options]       Cancel ongoing escape
+  get-escape [options]          Get current escape status
+  get-escape-enabled [options]  Get escape configuration
+  help [command]                display help for command
+```
+
 ## Get Ledger Public Key
 
 Retrieve your Ledger's public key for use as a multisig signer (Ledger must be connected and app opened):
@@ -252,38 +283,6 @@ npx ts-node starknet/multisig.ts add-signers \
 ### 3. Sign and Broadcast
 
 Follow the standard offline workflow for signing and broadcasting (see main README).
-
-## Command Options
-
-### Required Options
-
-If not env vars have been set:
-
-- `--contract-address`: The multisig contract address
-- `--env`: Environment (testnet, mainnet) - if not env var has been set
-- `--privateKey`: Private key (for online operations) - if not env var has been set
-- `--accountAddress`: Account address for transaction - if not env var has been set
-
-### Signer Management Options
-- `--threshold`: Required number of signatures
-- `--signers`: Comma-separated list of signer addresses
-- `--signer-type`: Type of signer (starknet, secp256k1, etc.)
-- `--signer-to-remove`: Address to remove (replace operation)
-- `--signer-to-add`: Address to add (replace operation)
-
-### Guardian Options
-- `--is-enabled`: Enable/disable guardian recovery
-- `--security-period`: Time delay before escape execution (seconds)
-- `--expiry-period`: Time window for escape execution (seconds)
-- `--guardian`: Guardian address
-- `--selector`: Function selector for escape
-- `--calldata`: Comma-separated calldata for escape
-
-### Offline Options
-- `--offline`: Generate unsigned transaction
-- `--estimate`: Estimate gas fees
-- `--nonce`: Account nonce
-- Gas parameters (see main README)
 
 ## Debugging Tools
 

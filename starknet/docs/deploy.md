@@ -27,28 +27,32 @@ export STARKNET_ACCOUNT_ADDRESS=0x...
 
 ## Command Options
 
-### Required Options
+```
+Usage: deploy-contract [options]
 
-- `--env`: Environment (testnet, mainnet) - if not env var has been set
-- `--contractConfigName`: Contract configuration name (must exist in config)
-- `--accountAddress`: Account address for deployment - if not env var has been set
+Deploy Starknet contracts
 
-### Optional Options
-- `--constructorCalldata`: Constructor arguments as JSON array (default: '[]')
-- `--salt`: Salt for deterministic deployment address
-- `--privateKey`: Private key (required for online, not for offline) - if not env var has been set
-- `--offline`: Generate unsigned transaction file
-- `--estimate`: Estimate gas and display CLI arguments
-- `--nonce`: Account nonce (required for offline)
-- `--yes`: Skip confirmation prompts
-
-### Gas Options (Offline Only)
-- `--l1GasMaxAmount`: Maximum L1 gas amount
-- `--l1GasMaxPricePerUnit`: Maximum L1 gas price per unit
-- `--l2GasMaxAmount`: Maximum L2 gas amount
-- `--l2GasMaxPricePerUnit`: Maximum L2 gas price per unit
-- `--l1DataMaxAmount`: Maximum L1 data amount
-- `--l1DataMaxPricePerUnit`: Maximum L1 data price per unit
+Options:
+  -V, --version                                    output the version number
+  -e, --env <env>                                  environment (choices: "devnet-amplifier", "mainnet", "stagenet", "testnet", default: "testnet", env: ENV)
+  -y, --yes                                        skip deployment prompt confirmation (env: YES)
+  -p, --privateKey < privateKey >                  private key for Starknet account(testnet only, not required for offline tx generation) (env: STARKNET_PRIVATE_KEY)
+  --accountAddress <accountAddress>                Starknet account address (env: STARKNET_ACCOUNT_ADDRESS)
+  --offline                                        generate unsigned transaction for offline signing (env: OFFLINE)
+  --estimate                                       estimate gas for this transaction and display CLI args to copy (env: ESTIMATE)
+  --outputDir <outputDir>                          output directory for unsigned transactions (required for --offline) (default: "./starknet-offline-txs", env: OUTPUT_DIR)
+  --nonce <nonce>                                  nonce for offline transaction generation (required for --offline) (env: NONCE)
+  --contractConfigName <contractConfigName>        name of the contract configuration to use
+  --constructorCalldata <constructorCalldata>      constructor calldata as JSON array
+  --salt <salt>                                    salt for deterministic deployment (default: "0", env: SALT)
+  --l1GasMaxAmount <l1GasMaxAmount>                maximum L1 gas amount (default: 0) (default: "0", env: L1_GAS_MAX_AMOUNT)
+  --l1GasMaxPricePerUnit <l1GasMaxPricePerUnit>    maximum L1 gas price per unit in wei (default: 0) (default: "0", env: L1_GAS_MAX_PRICE_PER_UNIT)
+  --l2GasMaxAmount <l2GasMaxAmount>                maximum L2 gas amount (default: 0) (default: "0", env: L2_GAS_MAX_AMOUNT)
+  --l2GasMaxPricePerUnit <l2GasMaxPricePerUnit>    maximum L2 gas price per unit in wei (default: 0) (default: "0", env: L2_GAS_MAX_PRICE_PER_UNIT)
+  --l1DataMaxAmount <l1DataMaxAmount>              maximum L1 data amount (default: 0) (default: "0", env: L1_DATA_MAX_AMOUNT)
+  --l1DataMaxPricePerUnit <l1DataMaxPricePerUnit>  maximum L1 data price per unit in wei (default: 0) (default: "0", env: L1_DATA_MAX_PRICE_PER_UNIT)
+  -h, --help                                       display help for command
+```
 
 ## Deployment Workflow
 

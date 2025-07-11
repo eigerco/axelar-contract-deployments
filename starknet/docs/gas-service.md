@@ -23,19 +23,37 @@ Make sure you have:
 ]
 ```
 
-## Environment Setup
+## Environment Vars
+
+If you prefer using env vars, instead of --env --privateKey and --accountAddress you can use the following env vars:
 
 ```bash
-# Set your test environment
-export STARKNET_ENV=testnet
+# For gas estimation (online)
+export ENV=testnet
+export STARKNET_PRIVATE_KEY=0x...
+export STARKNET_ACCOUNT_ADDRESS=0x...
 
-# Set your test account (for online transactions)
-export STARKNET_PRIVATE_KEY=0x1234...
-export STARKNET_ACCOUNT_ADDRESS=0x5678...
+# For offline signing
+# No network access required
+# Ledger must be connected
+```
 
-# Common test addresses
-export TEST_TOKEN_ADDRESS=0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7
-export TEST_RECEIVER_ADDRESS=0x1234
+## Command Options
+
+```
+Usage: gas-service [options] [command]
+
+Interact with the Axelar Gas Service contract on Starknet
+
+Options:
+  -h, --help         display help for command
+
+Commands:
+  collect [options]  Collect accumulated fees from the contract
+  refund [options]   Refund tokens to a receiver address
+  add-gas [options]  Add additional gas payment for GMP contract call
+  pay-gas [options]  Pay for gas for a GMP contract call
+  help [command]     display help for command
 ```
 
 ## Write Commands (Support --offline and --estimate)
@@ -200,68 +218,6 @@ npx ts-node gas-service.ts pay-gas \
   --env testnet \
   --offline
 
-## Testing Workflow
-
-1. Pick the ERC20 token you want to pay with (currently only STRK supported)
-
-2. **Fund the gas service contract** with test tokens:
-   ```bash
-   # First approve the gas service contract to spend your tokens
-   # Then transfer tokens to the gas service contract
-   ```
-
-3. **Test gas payment** for a GMP call:
-   ```bash
-   # Pay gas before making the cross-chain call
-   npx ts-node gas-service.ts pay-gas \
-     --destinationChain "ethereum" \
-     --destinationAddress "0x123..." \
-     --payloadHash "0xabc..." \
-     --tokenAddress $TEST_TOKEN_ADDRESS \
-     --refundAddress $STARKNET_ACCOUNT_ADDRESS \
-     --amount "100000" \
-     --params "" \
-     --env testnet \
-     --privateKey $STARKNET_PRIVATE_KEY \
-     --accountAddress $STARKNET_ACCOUNT_ADDRESS
-   ```
-
-4. **Add more gas** if needed:
-   ```bash
-   npx ts-node gas-service.ts add-gas \
-     --txHash "0x..." \
-     --logIndex 0 \
-     --tokenAddress $TEST_TOKEN_ADDRESS \
-     --refundAddress $STARKNET_ACCOUNT_ADDRESS \
-     --amount "50000" \
-     --env testnet \
-     --privateKey $STARKNET_PRIVATE_KEY \
-     --accountAddress $STARKNET_ACCOUNT_ADDRESS
-   ```
-
-5. **Collect fees** (as gas collector):
-   ```bash
-   npx ts-node gas-service.ts collect \
-     --receiverAddress $TEST_RECEIVER_ADDRESS \
-     --contractsAmounts '[{"contract_address": "'$TEST_TOKEN_ADDRESS'", "amount": "150000"}]' \
-     --env testnet \
-     --privateKey $GAS_COLLECTOR_PRIVATE_KEY \
-     --accountAddress $GAS_COLLECTOR_ADDRESS
-   ```
-
-6. **Issue refunds** if needed:
-   ```bash
-   npx ts-node gas-service.ts refund \
-     --txHash "0x..." \
-     --logIndex 0 \
-     --receiverAddress $USER_ADDRESS \
-     --tokenAddress $TEST_TOKEN_ADDRESS \
-     --amount "50000" \
-     --env testnet \
-     --privateKey $GAS_COLLECTOR_PRIVATE_KEY \
-     --accountAddress $GAS_COLLECTOR_ADDRESS
-   ```
-
 ## Notes
 
 - Only the gas collector authority can call `collect` and `refund` functions
@@ -273,23 +229,3 @@ npx ts-node gas-service.ts pay-gas \
 - The `params` field in `pay_gas` is a string that will be converted to ByteArray and emitted in the event
 - For offline transactions, you'll need to follow up with the signing and broadcasting workflow
 - Make sure to approve the gas service contract to spend your tokens before calling `pay_gas` or `add_gas`
-
-## Common Test Scenarios
-
-### Scenario 1: Complete GMP Flow with Gas Payment
-
-1. Pay gas for the GMP call
-2. Make the actual GMP call through the gateway
-3. Add more gas if needed
-4. Gas collector collects the fees
-
-### Scenario 2: Refund Flow
-
-1. Pay gas for a GMP call
-2. Call gets cancelled or fails
-3. Gas collector refunds the user
-
-### Scenario 3: Multi-token Collection
-
-1. Multiple users pay gas with different tokens
-2. Gas collector collects all accumulated fees in one transaction

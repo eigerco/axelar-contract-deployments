@@ -31,6 +31,24 @@ export STARKNET_ACCOUNT_ADDRESS=0x...
 # Ledger must be connected
 ```
 
+## Command Options
+
+```
+Usage: declare-contract [options]
+
+Declare Starknet contracts and save class hash to config
+
+Options:
+  -V, --version                              output the version number
+  -e, --env <env>                            environment (choices: "devnet-amplifier", "mainnet", "stagenet", "testnet", default: "testnet", env: ENV)
+  -y, --yes                                  skip deployment prompt confirmation (env: YES)
+  -p, --privateKey < privateKey >            private key for Starknet account(testnet only, not required for offline tx generation) (env: STARKNET_PRIVATE_KEY)
+  --accountAddress <accountAddress>          Starknet account address (env: STARKNET_ACCOUNT_ADDRESS)
+  --contractConfigName <contractConfigName>  name to store in config for this contract
+  --contractPath <contractPath>              path to the contract JSON file
+  -h, --help                                 display help for command
+```
+
 ## Declare Contract Command
 
 ### Basic Declaration
@@ -55,15 +73,6 @@ npx ts-node starknet/declare-contract.ts \
   --accountAddress $STARKNET_ACCOUNT_ADDRESS \
   --yes
 ```
-
-## Command Options
-
-- `--env`: Environment (testnet, mainnet)
-- `--contractConfigName`: Name to store in config for future reference
-- `--contractPath`: Path to the Sierra contract JSON file
-- `--privateKey`: Private key for transaction signing
-- `--accountAddress`: Account address for transaction
-- `--yes`: Skip confirmation prompts
 
 ## Declaring Workflow
 

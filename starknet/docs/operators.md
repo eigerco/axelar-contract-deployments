@@ -15,7 +15,7 @@ If you prefer using env vars, instead of --env --privateKey and --accountAddress
 
 ```bash
 # For gas estimation (online)
-export STARKNET_ENV=mainnet
+export ENV=testnet
 export STARKNET_PRIVATE_KEY=0x...
 export STARKNET_ACCOUNT_ADDRESS=0x...
 
@@ -24,6 +24,24 @@ export STARKNET_ACCOUNT_ADDRESS=0x...
 # Ledger must be connected
 ```
 
+## Command Options
+
+```
+Usage: operators [options] [command]
+
+Interact with Operators contract on Starknet
+
+Options:
+  -V, --version                                                                output the version number
+  -h, --help                                                                   display help for command
+
+Commands:
+  is-operator [options] <account>                                              Check if an account is an operator
+  add-operator [options] <operator>                                            Add a new operator
+  remove-operator [options] <operator>                                         Remove an operator
+  execute-contract [options] <target> <functionName> <calldata> <nativeValue>  Execute an external contract call
+  help [command]                                                               display help for command
+```
 
 ## Write Commands (Support --offline and --estimate)
 
@@ -83,39 +101,6 @@ npx ts-node operators.ts execute-contract "0x049d36570d4e46f48e99674bd3fcc84644d
 ```bash
 npx ts-node operators.ts is-operator "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7" --env testnet
 ```
-
-## Testing Workflow
-
-1. **Start with read commands** to verify the operators contract is accessible:
-   ```bash
-   npx ts-node operators.ts is-operator $STARKNET_ACCOUNT_ADDRESS --env testnet
-   ```
-
-2. **Add yourself as operator** (if you have permission):
-   ```bash
-   npx ts-node operators.ts add-operator $STARKNET_ACCOUNT_ADDRESS --env testnet --privateKey $STARKNET_PRIVATE_KEY --accountAddress $STARKNET_ACCOUNT_ADDRESS
-   ```
-
-3. **Verify operator status**:
-   ```bash
-   npx ts-node operators.ts is-operator $STARKNET_ACCOUNT_ADDRESS --env testnet
-   ```
-
-4. **Test execute contract** with a simple call:
-   ```bash
-   # Example: calling a view function using function name
-   npx ts-node operators.ts execute-contract "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7" "balance_of" '["0x123"]' "0" --env testnet --privateKey $STARKNET_PRIVATE_KEY --accountAddress $STARKNET_ACCOUNT_ADDRESS
-   ```
-
-5. **Test gas estimation**:
-   ```bash
-   npx ts-node operators.ts add-operator "0x123" --env testnet --privateKey $STARKNET_PRIVATE_KEY --accountAddress $STARKNET_ACCOUNT_ADDRESS --estimate
-   ```
-
-6. **Test offline transaction generation**:
-   ```bash
-   npx ts-node operators.ts add-operator "0x123" --env testnet --offline
-   ```
 
 ## Notes
 

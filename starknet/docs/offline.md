@@ -37,6 +37,61 @@ export STARKNET_ACCOUNT_ADDRESS=0x...
 # Ledger must be connected
 ```
 
+## Command Options
+
+### Sign Transaction
+
+```
+Usage: sign-transaction [options] <transactionFile>
+
+Sign Starknet transaction with Ledger hardware wallet
+
+Arguments:
+  transactionFile           path to unsigned transaction JSON file
+
+Options:
+  -V, --version             output the version number
+  -p, --ledger-path <path>  Ledger derivation path (e.g.
+                            "m/2645'/1195502025'/1148870696'/1'/0'/0")
+  -e, --env <env>           environment (mainnet, testnet, devnet) (default:
+                            "mainnet")
+  --multisig                enable multisig mode (include public key in
+                            signature) (default: true)
+  -h, --help                display help for command
+```
+
+### Combine Signatures
+
+```
+Usage: combine-signatures [options] <signatureFiles...>
+
+Combine multiple signatures into Starknet Argent multisig format
+
+Arguments:
+  signatureFiles       signed transaction files to combine
+
+Options:
+  -V, --version        output the version number
+  -o, --output <file>  output file path (default:
+                       starknet-offline-txs/tx_multisig_signed_<timestamp>.json)
+  -h, --help           display help for command
+```
+
+### Broadcast Transaction
+
+```
+Usage: broadcast-transaction [options] <transaction-file>
+
+Broadcast a signed Starknet v3 INVOKE transaction from a JSON file
+
+Arguments:
+  transaction-file         Path to the signed transaction JSON file
+
+Options:
+  -e, --env <environment>  Environment (e.g., testnet, mainnet)
+  -h, --help               display help for command
+```
+
 ## Complete Workflow Steps
 
 ### Step 1: Gas Estimation (Online)

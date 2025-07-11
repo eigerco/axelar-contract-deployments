@@ -57,6 +57,31 @@ export STARKNET_ACCOUNT_ADDRESS=0x...
 # Ledger must be connected
 ```
 
+## Command Options
+
+```
+Usage: gateway [options] [command]
+
+Interact with Axelar Gateway on Starknet
+
+Options:
+  -V, --version                                                                                            output the version number
+  -h, --help                                                                                               display help for command
+
+Commands:
+  call-contract [options] <destinationChain> <destinationContractAddress> <payload>                        Call a contract on another chain
+  approve-messages [options] <messages> <proof>                                                            Approve messages
+  validate-message [options] <sourceChain> <messageId> <sourceAddress> <payloadHash>                       Validate a message
+  rotate-signers [options] <newSigners> <proof>                                                            Rotate gateway signers
+  is-message-approved [options] <sourceChain> <messageId> <sourceAddress> <contractAddress> <payloadHash>  Check if message is approved
+  is-message-executed [options] <sourceChain> <messageId>                                                  Check if message is executed
+  transfer-operatorship [options] <newOperator>                                                            Transfer gateway operatorship
+  get-operator [options]                                                                                   Get current operator
+  get-epoch [options]                                                                                      Get current epoch
+  init-signers [options] <signers>                                                                         Initialize gateway signers (can only be called once after deployment or upgrade)
+  help [command]                                                                                           display help for command
+```
+
 ## Write Commands (Support --offline and --estimate)
 
 ### 1. Call Contract
