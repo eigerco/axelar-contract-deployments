@@ -10,9 +10,24 @@ Make sure you have:
 - For mainnet: Ledger hardware wallet
 - Understanding of multisig threshold requirements
 
+## Environment Vars
+
+If you prefer using env vars, instead of --env --privateKey and --accountAddress you can use the following env vars:
+
+```bash
+# For gas estimation (online)
+export STARKNET_ENV=testnet
+export STARKNET_PRIVATE_KEY=0x...
+export STARKNET_ACCOUNT_ADDRESS=0x...
+
+# For offline signing
+# No network access required
+# Ledger must be connected
+```
+
 ## Get Ledger Public Key
 
-Retrieve your Ledger's public key for use as a multisig signer:
+Retrieve your Ledger's public key for use as a multisig signer (Ledger must be connected and app opened):
 
 ```bash
 npx ts-node starknet/multisig.ts get-ledger-pubkey \

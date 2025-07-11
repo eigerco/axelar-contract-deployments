@@ -22,11 +22,13 @@ The offline transaction workflow consists of seven steps:
 6. **Signature Combination** - Combine signatures for multisig
 7. **Transaction Broadcast** (Online) - Submit to network
 
-## Environment Setup
+## Environment Vars
+
+If you prefer using env vars, instead of --env --privateKey and --accountAddress you can use the following env vars:
 
 ```bash
 # For gas estimation (online)
-export STARKNET_ENV=mainnet
+export STARKNET_ENV=testnet
 export STARKNET_PRIVATE_KEY=0x...
 export STARKNET_ACCOUNT_ADDRESS=0x...
 

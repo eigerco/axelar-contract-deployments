@@ -9,16 +9,21 @@ Make sure you have:
 - The operators contract deployed
 - Valid test data for each command
 
-## Environment Setup
+## Environment Vars
+
+If you prefer using env vars, instead of --env --privateKey and --accountAddress you can use the following env vars:
 
 ```bash
-# Set your test environment
-export STARKNET_ENV=testnet
+# For gas estimation (online)
+export STARKNET_ENV=mainnet
+export STARKNET_PRIVATE_KEY=0x...
+export STARKNET_ACCOUNT_ADDRESS=0x...
 
-# Set your test account (for online transactions)
-export STARKNET_PRIVATE_KEY=0x1234...
-export STARKNET_ACCOUNT_ADDRESS=0x5678...
+# For offline signing
+# No network access required
+# Ledger must be connected
 ```
+
 
 ## Write Commands (Support --offline and --estimate)
 
