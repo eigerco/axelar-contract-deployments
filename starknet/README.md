@@ -60,7 +60,8 @@ ENV=testnet  # or mainnet, devnet, stagenet
 - ✅ Gateway operations (call contract, approve messages, validate messages)
 - ✅ Signer rotation and operatorship management
 - ✅ Multicall support for batching operations
-- 🔄 Additional contracts (Gas Service, Operators, ITS) - *coming soon*
+- ✅ InterchainTokenService (ITS) - full token bridging support
+- 🔄 Additional contracts (Gas Service, Operators, Governance) - *coming soon*
 
 ## 📚 Core Workflow
 
@@ -574,7 +575,11 @@ Contracts are managed through configuration names stored in the chain config. Ea
 ## 📚 Documentation
 
 ### Contract-Specific Guides
-- **[Gateway Operations](./docs/gateway.md)** - Cross-chain messaging and gateway management
+- **[Gateway Operations](./docs/gateway-test-commands.md)** - Cross-chain messaging and gateway management
+- **[InterchainTokenService (ITS)](./docs/its.md)** - Token bridging and cross-chain token operations
+- **[Gas Service Operations](./docs/gas-service-test-commands.md)** - Gas payment and management
+- **[Governance Operations](./docs/governance-test-commands.md)** - Governance and voting operations
+- **[Operators Management](./docs/operators-test-commands.md)** - Operator management and control
 
 ### Workflow Guides
 - **[Offline Signing](./docs/OFFLINE-SIGNING.md)** - Complete guide for mainnet offline workflow

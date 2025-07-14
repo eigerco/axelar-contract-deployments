@@ -175,7 +175,6 @@ export const saveContractConfig = (
     config.chains[chainName].contracts![contractName] = {
         ...config.chains[chainName].contracts![contractName],
         ...deploymentInfo,
-        deployedAt: new Date().toISOString(),
     };
 };
 
