@@ -68,6 +68,8 @@ Based on the the passed `--env` flag value:
 - ✅ Gateway operations (call contract, approve messages, validate messages)
 - ✅ Signer rotation and operatorship management
 - ✅ Multicall support for batching operations
+- ✅ Gas Service contract operations
+- ✅ Operators contract management
 - ✅ InterchainTokenService (ITS) - full token bridging support
 
 ## 🛠️ CLI Options Reference
