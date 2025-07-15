@@ -116,23 +116,22 @@ npx ts-node starknet/its/deploy-itf.ts \
 
 ### Deploy Interchain Token
 
+Deploy a new interchain token locally via the InterchainTokenFactory.
+
 ```
 Usage: its-deploy-token [options]
 
-Deploy a new interchain token on Starknet
+Deploy a new interchain token on Starknet via InterchainTokenFactory
 
 Options:
   --salt <salt>                      Salt for token deployment
-  --destinationChain <chain>         Destination chain name (optional, defaults
-                                     to local deployment)
   --name <name>                      Token name
   --symbol <symbol>                  Token symbol
   --decimals <decimals>              Token decimals
-  --minter <address>                 Minter address (defaults to current
-                                     account)
-  --gasValue <value>                 Gas value for cross-chain deployment
-  --gasToken <token>                 Gas token (currently only STRK is supported)
-                                     (default: "STRK")
+  --initialSupply <amount>           Initial supply to mint (defaults to 0)
+  --minter <address>                 Minter address (if initial supply > 0,
+                                     mintership will be transferred to this
+                                     address)
   -e, --env <env>                    environment (choices: "devnet-amplifier",
                                      "mainnet", "stagenet", "testnet", default:
                                      "testnet", env: ENV)
@@ -144,11 +143,23 @@ Options:
   --accountAddress <accountAddress>  Starknet account address (env:
                                      STARKNET_ACCOUNT_ADDRESS)
   -h, --help                         display help for command
+
+Note: This command deploys tokens locally via the InterchainTokenFactory.
+- If initialSupply > 0, tokens will be minted to the deployer and mintership transferred to the minter
+- If initialSupply = 0, the minter address will be set directly
+- For cross-chain deployment, use a separate command after local deployment
 ```
 
-**Example:**
+**Examples:**
+
+Deploy with initial supply:
 ```bash
-npx ts-node starknet/its/deploy-token.ts --salt my-token-salt --name "My Token" --symbol "MTK" --decimals 18 --gasValue 100000 --gasToken STRK --privateKey 0x... --accountAddress 0x...
+npx ts-node starknet/its/deploy-token.ts --salt my-token-salt --name "My Token" --symbol "MTK" --decimals 18 --initialSupply 1000000 --minter 0x123... --privateKey 0x... --accountAddress 0x...
+```
+
+Deploy without initial supply (minter gets set directly):
+```bash
+npx ts-node starknet/its/deploy-token.ts --salt my-token-salt --name "My Token" --symbol "MTK" --decimals 18 --minter 0x456... --privateKey 0x... --accountAddress 0x...
 ```
 
 ### Register Custom Token

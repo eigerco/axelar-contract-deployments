@@ -12,7 +12,7 @@ import {
     validateStarknetOptions,
     estimateGasAndDisplayArgs,
 } from '../utils';
-import { CallData, Call, Contract, uint256, byteArray, num, CairoCustomEnum } from 'starknet';
+import { CallData, Call, Contract, uint256, byteArray, num } from 'starknet';
 import {
     Config,
     ChainConfig,
@@ -27,14 +27,15 @@ interface DeployTokenOptions extends GatewayCommandOptions {
     symbol: string;
     decimals: string;
     minter?: string;
-    gasValue: string;
-    gasToken: 'STRK' | 'ETH';
+    initialSupply?: string;
+    gasValue?: string;
+    gasToken?: 'STRK' | 'ETH';
 }
 
 /**
- * Helper function to get ITS contract instance with ABI
+ * Helper function to get contract instance with ABI
  */
-async function getITSContract(
+async function getContractWithABI(
     provider: any,
     address: string,
     account?: any
@@ -61,6 +62,7 @@ async function processCommand(
         symbol,
         decimals,
         minter,
+        initialSupply = '0',
         gasValue,
         gasToken,
         offline,
@@ -72,43 +74,34 @@ async function processCommand(
 
     const provider = getStarknetProvider(chain);
 
-    const itsConfig = getContractConfig(config, chain.name, 'InterchainTokenService');
-    if (!itsConfig.address) {
-        throw new Error('InterchainTokenService contract not found in configuration');
+    const itfConfig = getContractConfig(config, chain.name, 'InterchainTokenFactory');
+    if (!itfConfig.address) {
+        throw new Error('InterchainTokenFactory contract not found in configuration. Please deploy ITF first.');
     }
 
-    console.log(`\nDeploying Interchain Token:`);
+    console.log(`\nDeploying Interchain Token via Factory:`);
     console.log(`- Name: ${name}`);
     console.log(`- Symbol: ${symbol}`);
     console.log(`- Decimals: ${decimals}`);
     console.log(`- Salt: ${salt}`);
-    console.log(`- Destination Chain: ${destinationChain || 'local'}`);
-    console.log(`- Minter: ${minter || 'current account'}`);
-    console.log(`- Gas Value: ${gasValue}`);
-    console.log(`- Gas Token: ${gasToken} (Note: Only STRK is currently supported)`);
-
-    // Get the account address for minter if not provided
-    let minterAddress = minter;
-    if (!minterAddress && (privateKey || accountAddress)) {
-        if (accountAddress) {
-            minterAddress = accountAddress;
-        } else if (privateKey) {
-            const account = getStarknetAccount(privateKey, accountAddress!, provider);
-            minterAddress = account.address;
-        }
-        console.log(`- Using account address as minter: ${minterAddress}`);
+    console.log(`- Initial Supply: ${initialSupply}`);
+    console.log(`- Minter: ${minter || 'deployer (if initial supply > 0) or zero address'}`);
+    if (destinationChain) {
+        console.log(`- Note: Factory only supports local deployment. Cross-chain deployment requires separate command.`);
     }
 
-    // Build calldata for deploy_interchain_token
+    // Get the account address for minter if not provided
+    // Note: If initial supply > 0, the factory will handle minting and transfer mintership
+    let minterAddress = minter || '0x0'; // Use zero address if no minter specified
+
+    // Build calldata for deploy_interchain_token on factory
     const calldata = CallData.compile([
         salt, // salt: felt252
-        destinationChain || '0', // destination_chain: felt252 (0 for local deployment)
         byteArray.byteArrayFromString(name), // name: ByteArray
         byteArray.byteArrayFromString(symbol), // symbol: ByteArray
         decimals, // decimals: u8
-        byteArray.byteArrayFromString(minterAddress || ''), // minter: ByteArray
-        uint256.bnToUint256(gasValue), // gas_value: u256
-        0, // gas_token: GasToken enum - Always use STRK (0) for now
+        uint256.bnToUint256(initialSupply), // initial_supply: u256
+        minterAddress, // minter: ContractAddress
     ]);
 
     const hexCalldata = calldata.map(item => num.toHex(item));
@@ -119,7 +112,7 @@ async function processCommand(
 
         const account = getStarknetAccount(privateKey!, accountAddress!, provider);
         const calls: Call[] = [{
-            contractAddress: itsConfig.address,
+            contractAddress: itfConfig.address,
             entrypoint: 'deploy_interchain_token',
             calldata
         }];
@@ -132,7 +125,7 @@ async function processCommand(
     if (offline) {
         console.log(`\nGenerating unsigned transaction for deploying interchain token on ${chain.name}...`);
         const calls = [{
-            contractAddress: itsConfig.address,
+            contractAddress: itfConfig.address,
             entrypoint: 'deploy_interchain_token',
             calldata: hexCalldata
         }];
@@ -147,19 +140,17 @@ async function processCommand(
 
     // Execute the transaction
     const account = getStarknetAccount(privateKey!, accountAddress!, provider);
-    const itsContract = await getITSContract(provider, itsConfig.address, account);
+    const itfContract = await getContractWithABI(provider, itfConfig.address, account);
 
-    console.log('\nExecuting deploy_interchain_token...');
+    console.log('\nExecuting deploy_interchain_token on factory...');
 
-    const tx = await itsContract.deploy_interchain_token(
+    const tx = await itfContract.deploy_interchain_token(
         salt,
-        destinationChain || '0',
         name,
         symbol,
         decimals,
-        minterAddress || '',
-        uint256.bnToUint256(gasValue),
-        new CairoCustomEnum({ Strk: "" })  // Only STRK supported
+        uint256.bnToUint256(initialSupply),
+        minterAddress
     );
 
     console.log('Transaction hash:', tx.transaction_hash);
@@ -168,19 +159,9 @@ async function processCommand(
     const receipt = await tx.wait();
     console.log('Transaction accepted in block:', receipt.block_number);
 
-    // Parse InterchainTokenDeployed event to get token_id
-    const deployedEvent = receipt.events?.find(event =>
-        event.keys[0] === num.toHex(num.getDecimalString('InterchainTokenDeployed'))
-    );
-
-    if (deployedEvent) {
-        // The token_id is the first key after the event selector
-        const tokenId = deployedEvent.keys[1];
-        console.log('\nInterchain token deployed successfully!');
-        console.log('Token ID:', tokenId);
-    } else {
-        console.log('\nTransaction completed but could not parse token ID from events.');
-    }
+    // The factory's deploy_interchain_token returns the token_id directly
+    console.log('\nInterchain token deployed successfully via factory!');
+    console.log('Note: Check transaction receipt for token ID in the return value or events.');
 
     return tx.transaction_hash;
 }
@@ -191,15 +172,18 @@ if (require.main === module) {
 
     program
         .name('its-deploy-token')
-        .description('Deploy a new interchain token on Starknet')
+        .description('Deploy a new interchain token on Starknet via InterchainTokenFactory')
         .requiredOption('--salt <salt>', 'Salt for token deployment')
-        .option('--destinationChain <chain>', 'Destination chain name (optional, defaults to local deployment)')
         .requiredOption('--name <name>', 'Token name')
         .requiredOption('--symbol <symbol>', 'Token symbol')
         .requiredOption('--decimals <decimals>', 'Token decimals')
-        .option('--minter <address>', 'Minter address (defaults to current account)')
-        .requiredOption('--gasValue <value>', 'Gas value for cross-chain deployment')
-        .requiredOption('--gasToken <token>', 'Gas token (currently only STRK is supported)', 'STRK');
+        .option('--initialSupply <amount>', 'Initial supply to mint (defaults to 0)')
+        .option('--minter <address>', 'Minter address (if initial supply > 0, mintership will be transferred to this address)')
+        .addHelpText('after', `
+Note: This command deploys tokens locally via the InterchainTokenFactory.
+- If initialSupply > 0, tokens will be minted to the deployer and mintership transferred to the minter
+- If initialSupply = 0, the minter address will be set directly
+- For cross-chain deployment, use a separate command after local deployment`);
 
     addStarknetOptions(program);
 

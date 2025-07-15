@@ -82,7 +82,13 @@ async function processCommand(
         throw new Error('InterchainTokenService contract not found in configuration');
     }
 
+    const itfConfig = getContractConfig(config, chain.name, 'InterchainTokenFactory');
+    if (!itfConfig.address) {
+        throw new Error('InterchainTokenFactory contract not found in configuration');
+    }
+
     const itsContract = await getITSContract(provider, itsConfig.address, account);
+    const itfContract = await getITSContract(provider, itfConfig.address, account);
 
     console.log('\n=== ITS END-TO-END TEST FLOW ===\n');
 
@@ -98,15 +104,16 @@ async function processCommand(
         console.log(`- Initial Supply: ${initialSupply} (to deployer)`);
         console.log(`- Salt: ${salt}`);
 
-        const deployTx = await itsContract.deploy_interchain_token(
+        // Convert initial supply to smallest unit
+        const initialSupplyInSmallestUnit = parseFloat(initialSupply) * Math.pow(10, parseInt(tokenDecimals));
+        
+        const deployTx = await itfContract.deploy_interchain_token(
             salt,
-            '0', // local deployment
             byteArray.byteArrayFromString(tokenName),
             byteArray.byteArrayFromString(tokenSymbol),
             tokenDecimals,
-            byteArray.byteArrayFromString(account.address), // minter
-            uint256.bnToUint256('0'), // no gas for local
-            0, // STRK
+            uint256.bnToUint256(initialSupplyInSmallestUnit.toString()),
+            account.address, // minter
         );
 
         console.log('\nTransaction hash:', deployTx.transaction_hash);
