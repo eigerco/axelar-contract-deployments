@@ -12,7 +12,7 @@ import {
     validateStarknetOptions,
     estimateGasAndDisplayArgs,
 } from '../utils';
-import { CallData, Call, Contract, uint256, byteArray, num } from 'starknet';
+import { CallData, Call, Contract, uint256, byteArray, num, CairoCustomEnum } from 'starknet';
 import {
     Config,
     ChainConfig,
@@ -82,7 +82,7 @@ async function processCommand(
     console.log(`- Amount: ${amount}`);
     console.log(`- Data: ${data || 'none'}`);
     console.log(`- Gas Value: ${gasValue}`);
-    console.log(`- Gas Token: ${gasToken}`);
+    console.log(`- Gas Token: ${gasToken} (only STRK is supported currently)`);
 
     // Convert token ID to uint256 if it's a hex string
     let tokenIdUint256;
@@ -98,9 +98,9 @@ async function processCommand(
         destinationChain, // destination_chain: felt252
         byteArray.byteArrayFromString(destinationAddress), // destination_address: ByteArray
         uint256.bnToUint256(amount), // amount: u256
-        byteArray.byteArrayFromString(data || ''), // data: ByteArray
+        data ? byteArray.byteArrayFromString(data) : [], // data: ByteArray (empty if not provided)
         uint256.bnToUint256(gasValue), // gas_value: u256
-        gasToken === 'ETH' ? 1 : 0, // gas_token: GasToken enum (0 for STRK, 1 for ETH)
+        gasToken === 'ETH' ? new CairoCustomEnum({ Eth: {} }) : new CairoCustomEnum({ Strk: {} }), // gas_token: GasToken enum
     ]);
 
     const hexCalldata = calldata.map(item => num.toHex(item));
@@ -108,7 +108,7 @@ async function processCommand(
     // Handle estimate mode
     if (estimate) {
         console.log(`\nEstimating gas for interchain transfer on ${chain.name}...`);
-        
+
         const account = getStarknetAccount(privateKey!, accountAddress!, provider);
         const calls: Call[] = [{
             contractAddress: itsConfig.address,
@@ -128,7 +128,7 @@ async function processCommand(
             entrypoint: 'interchain_transfer',
             calldata: hexCalldata
         }];
-        
+
         return handleOfflineTransaction(
             options,
             chain.name,
@@ -162,7 +162,7 @@ async function processCommand(
         const tokenContract = new Contract(tokenAbi, tokenAddress, provider);
         const balance = await tokenContract.balanceOf(account.address);
         console.log(`Current balance: ${balance}`);
-        
+
         const amountBN = BigInt(amount);
         if (BigInt(balance) < amountBN) {
             throw new Error(`Insufficient balance. Current balance: ${balance}, required: ${amount}`);
@@ -172,35 +172,28 @@ async function processCommand(
     }
 
     console.log('\nExecuting interchain_transfer...');
-    
-    // Pay gas in the specified token
-    let value = '0';
-    if (gasToken === 'ETH' && gasValue !== '0') {
-        value = gasValue;
-    }
 
     const tx = await itsContract.interchain_transfer(
         tokenIdUint256,
         destinationChain,
-        byteArray.byteArrayFromString(destinationAddress),
+        destinationAddress,
         uint256.bnToUint256(amount),
-        byteArray.byteArrayFromString(data || ''),
+        data || '',
         uint256.bnToUint256(gasValue),
-        gasToken === 'ETH' ? 1 : 0,
-        { value }
+        gasToken === 'ETH' ? new CairoCustomEnum({ Eth: {} }) : new CairoCustomEnum({ Strk: {} })
     );
 
     console.log('Transaction hash:', tx.transaction_hash);
     console.log('\nWaiting for transaction to be accepted...');
-    
+
     const receipt = await tx.wait();
     console.log('Transaction accepted in block:', receipt.block_number);
 
     // Parse InterchainTransferSent event
-    const transferEvent = receipt.events?.find(event => 
+    const transferEvent = receipt.events?.find(event =>
         event.keys[0] === num.toHex(num.getDecimalString('InterchainTransferSent'))
     );
-    
+
     if (transferEvent) {
         console.log('\nInterchain transfer initiated successfully!');
         console.log('Transfer details from event:');
@@ -227,14 +220,14 @@ if (require.main === module) {
         .requiredOption('--amount <amount>', 'Amount to transfer (in smallest unit)')
         .option('--data <data>', 'Optional data for contract execution')
         .requiredOption('--gasValue <value>', 'Gas value for cross-chain execution')
-        .requiredOption('--gasToken <token>', 'Gas token (STRK or ETH)', 'STRK');
+        .option('--gasToken <token>', 'Gas token (only STRK is supported currently)', 'STRK');
 
     addStarknetOptions(program);
 
     program.action(async (options) => {
         const config = loadConfig(options.env);
         const chain = config.chains[STARKNET_CHAIN];
-        
+
         if (!chain) {
             throw new Error('Starknet configuration not found');
         }

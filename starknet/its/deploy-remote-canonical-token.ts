@@ -12,7 +12,7 @@ import {
     validateStarknetOptions,
     estimateGasAndDisplayArgs,
 } from '../utils';
-import { CallData, Call, Contract, uint256, num } from 'starknet';
+import { CallData, Call, Contract, uint256, num, CairoCustomEnum } from 'starknet';
 import {
     Config,
     ChainConfig,
@@ -71,7 +71,7 @@ async function processCommand(
     if (!tokenFactoryAddress) {
         const factoryConfig = getContractConfig(config, chain.name, 'InterchainTokenFactory');
         tokenFactoryAddress = factoryConfig.address;
-        
+
         if (!tokenFactoryAddress) {
             throw new Error('InterchainTokenFactory contract not found in configuration. Please deploy it first or provide --factoryAddress option.');
         }
@@ -81,7 +81,7 @@ async function processCommand(
     console.log(`- Original Token Address: ${tokenAddress}`);
     console.log(`- Destination Chain: ${destinationChain}`);
     console.log(`- Gas Value: ${gasValue}`);
-    console.log(`- Gas Token: ${gasToken}`);
+    console.log(`- Gas Token: ${gasToken} (only STRK is supported currently)`);
     console.log(`- Factory Address: ${tokenFactoryAddress}`);
 
     // Build calldata for deploy_remote_canonical_interchain_token
@@ -89,7 +89,7 @@ async function processCommand(
         tokenAddress, // original_token_address: ContractAddress
         destinationChain, // destination_chain: felt252
         uint256.bnToUint256(gasValue), // gas_value: u256
-        gasToken === 'ETH' ? 1 : 0, // gas_token: GasToken enum (0 for STRK, 1 for ETH)
+        gasToken === 'ETH' ? new CairoCustomEnum({ Eth: "" }) : new CairoCustomEnum({ Strk: "" }), // gas_token: GasToken enum
     ]);
 
     const hexCalldata = calldata.map(item => num.toHex(item));
@@ -97,7 +97,7 @@ async function processCommand(
     // Handle estimate mode
     if (estimate) {
         console.log(`\nEstimating gas for deploying canonical token on remote chain...`);
-        
+
         const account = getStarknetAccount(privateKey!, accountAddress!, provider);
         const calls: Call[] = [{
             contractAddress: tokenFactoryAddress,
@@ -117,7 +117,7 @@ async function processCommand(
             entrypoint: 'deploy_remote_canonical_interchain_token',
             calldata: hexCalldata
         }];
-        
+
         return handleOfflineTransaction(
             options,
             chain.name,
@@ -160,7 +160,7 @@ async function processCommand(
         const name = await tokenContract.name();
         const symbol = await tokenContract.symbol();
         const decimals = await tokenContract.decimals();
-        
+
         console.log(`Original token: ${name} (${symbol}), decimals: ${decimals}`);
     } catch (error) {
         console.warn('Could not fetch token details:', error.message);
@@ -177,31 +177,24 @@ async function processCommand(
     }
 
     console.log('\nExecuting deploy_remote_canonical_interchain_token...');
-    
-    // Pay gas in the specified token
-    let value = '0';
-    if (gasToken === 'ETH' && gasValue !== '0') {
-        value = gasValue;
-    }
 
     const tx = await tokenFactory.deploy_remote_canonical_interchain_token(
         tokenAddress,
         destinationChain,
         uint256.bnToUint256(gasValue),
-        gasToken === 'ETH' ? 1 : 0,
-        { value }
+        gasToken === 'ETH' ? new CairoCustomEnum({ Eth: "" }) : new CairoCustomEnum({ Strk: "" })
     );
 
     console.log('Transaction hash:', tx.transaction_hash);
     console.log('\nWaiting for transaction to be accepted...');
-    
+
     const receipt = await tx.wait();
     console.log('Transaction accepted in block:', receipt.block_number);
 
     // Parse events to understand what happened
     const eventCount = receipt.events?.length || 0;
     console.log(`\nTransaction completed with ${eventCount} events.`);
-    
+
     console.log('\nRemote canonical token deployment initiated!');
     console.log('The token will be deployed on the destination chain with:');
     console.log('- Same token metadata (name, symbol, decimals)');
@@ -222,15 +215,27 @@ if (require.main === module) {
         .requiredOption('--tokenAddress <address>', 'Address of the original canonical token')
         .requiredOption('--destinationChain <chain>', 'Destination chain name')
         .requiredOption('--gasValue <value>', 'Gas value for cross-chain deployment')
-        .requiredOption('--gasToken <token>', 'Gas token (STRK or ETH)', 'STRK')
-        .option('--factoryAddress <address>', 'InterchainTokenFactory address (defaults to config)');
+        .option('--gasToken <token>', 'Gas token (only STRK is supported currently)', 'STRK')
+        .option('--factoryAddress <address>', 'InterchainTokenFactory address (defaults to config)')
+        .addHelpText('after', `
+Examples:
+  Deploy canonical token using STRK for gas:
+    $ deploy-remote-canonical-token --tokenAddress 0x123... --destinationChain ethereum --gasValue 1000000000000000000
+
+  Offline mode (generate unsigned transaction):
+    $ deploy-remote-canonical-token --tokenAddress 0x123... --destinationChain ethereum --gasValue 1000000000000000000 --offline
+
+Note: 
+  - Only STRK is currently supported as gas token
+  - The canonical token will maintain the same token ID across all chains
+  - Gas value should be specified in Wei (18 decimals)`);
 
     addStarknetOptions(program);
 
     program.action(async (options) => {
         const config = loadConfig(options.env);
         const chain = config.chains[STARKNET_CHAIN];
-        
+
         if (!chain) {
             throw new Error('Starknet configuration not found');
         }

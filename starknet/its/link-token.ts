@@ -12,7 +12,7 @@ import {
     validateStarknetOptions,
     estimateGasAndDisplayArgs,
 } from '../utils';
-import { CallData, Call, Contract, uint256, byteArray, num } from 'starknet';
+import { CallData, Call, Contract, uint256, byteArray, num, CairoCustomEnum } from 'starknet';
 import {
     Config,
     ChainConfig,
@@ -30,13 +30,13 @@ interface LinkTokenOptions extends GatewayCommandOptions {
     gasToken: 'STRK' | 'ETH';
 }
 
-// Token Manager Types mapping
+// Token Manager Types mapping for Cairo enum
 const TOKEN_MANAGER_TYPES = {
-    'native': 0,        // NativeInterchainToken
-    'mintBurnFrom': 1,  // MintBurnFrom
-    'lockUnlock': 2,    // LockUnlock
-    'lockUnlockFee': 3, // LockUnlockFee
-    'mintBurn': 4,      // MintBurn
+    'native': 'NativeInterchainToken',
+    'mintBurnFrom': 'MintBurnFrom',
+    'lockUnlock': 'LockUnlock',
+    'lockUnlockFee': 'LockUnlockFee',
+    'mintBurn': 'MintBurn',
 };
 
 /**
@@ -85,8 +85,8 @@ async function processCommand(
     }
 
     // Validate token manager type
-    const tokenManagerTypeValue = TOKEN_MANAGER_TYPES[tokenManagerType];
-    if (tokenManagerTypeValue === undefined) {
+    const tokenManagerTypeEnum = TOKEN_MANAGER_TYPES[tokenManagerType];
+    if (tokenManagerTypeEnum === undefined) {
         throw new Error(`Invalid token manager type: ${tokenManagerType}. Valid types are: ${Object.keys(TOKEN_MANAGER_TYPES).join(', ')}`);
     }
 
@@ -94,10 +94,10 @@ async function processCommand(
     console.log(`- Salt: ${salt}`);
     console.log(`- Destination Chain: ${destinationChain}`);
     console.log(`- Destination Token Address: ${destinationTokenAddress}`);
-    console.log(`- Token Manager Type: ${tokenManagerType} (${tokenManagerTypeValue})`);
+    console.log(`- Token Manager Type: ${tokenManagerType} (${tokenManagerTypeEnum})`);
     console.log(`- Operator: ${operator || 'current account'}`);
     console.log(`- Gas Value: ${gasValue}`);
-    console.log(`- Gas Token: ${gasToken}`);
+    console.log(`- Gas Token: ${gasToken} (only STRK is supported currently)`);
 
     // Get the account address for operator if not provided
     let operatorAddress = operator;
@@ -116,10 +116,10 @@ async function processCommand(
         salt, // salt: felt252
         destinationChain, // destination_chain: felt252
         byteArray.byteArrayFromString(destinationTokenAddress), // destination_token_address: ByteArray
-        tokenManagerTypeValue, // token_manager_type: TokenManagerType (enum as felt252)
-        byteArray.byteArrayFromString(operatorAddress || ''), // link_params: ByteArray (operator address)
+        new CairoCustomEnum({ [tokenManagerTypeEnum]: {} }), // token_manager_type: TokenManagerType enum
+        operatorAddress ? byteArray.byteArrayFromString(operatorAddress) : [], // link_params: ByteArray (operator address, empty if not provided)
         uint256.bnToUint256(gasValue), // gas_value: u256
-        gasToken === 'ETH' ? 1 : 0, // gas_token: GasToken enum (0 for STRK, 1 for ETH)
+        gasToken === 'ETH' ? new CairoCustomEnum({ Eth: {} }) : new CairoCustomEnum({ Strk: {} }), // gas_token: GasToken enum
     ]);
 
     const hexCalldata = calldata.map(item => num.toHex(item));
@@ -127,7 +127,7 @@ async function processCommand(
     // Handle estimate mode
     if (estimate) {
         console.log(`\nEstimating gas for linking token on ${chain.name}...`);
-        
+
         const account = getStarknetAccount(privateKey!, accountAddress!, provider);
         const calls: Call[] = [{
             contractAddress: itsConfig.address,
@@ -147,7 +147,7 @@ async function processCommand(
             entrypoint: 'link_token',
             calldata: hexCalldata
         }];
-        
+
         return handleOfflineTransaction(
             options,
             chain.name,
@@ -182,35 +182,28 @@ async function processCommand(
     }
 
     console.log('\nExecuting link_token...');
-    
-    // Pay gas in the specified token
-    let value = '0';
-    if (gasToken === 'ETH' && gasValue !== '0') {
-        value = gasValue;
-    }
 
     const tx = await itsContract.link_token(
         salt,
         destinationChain,
-        byteArray.byteArrayFromString(destinationTokenAddress),
-        tokenManagerTypeValue,
-        byteArray.byteArrayFromString(operatorAddress || ''),
+        destinationTokenAddress,
+        new CairoCustomEnum({ [tokenManagerTypeEnum]: {} }),
+        operatorAddress || '',
         uint256.bnToUint256(gasValue),
-        gasToken === 'ETH' ? 1 : 0,
-        { value }
+        gasToken === 'ETH' ? new CairoCustomEnum({ Eth: {} }) : new CairoCustomEnum({ Strk: {} })
     );
 
     console.log('Transaction hash:', tx.transaction_hash);
     console.log('\nWaiting for transaction to be accepted...');
-    
+
     const receipt = await tx.wait();
     console.log('Transaction accepted in block:', receipt.block_number);
 
     // Parse LinkTokenStarted event
-    const linkEvent = receipt.events?.find(event => 
+    const linkEvent = receipt.events?.find(event =>
         event.keys[0] === num.toHex(num.getDecimalString('LinkTokenStarted'))
     );
-    
+
     if (linkEvent) {
         console.log('\nToken linking initiated successfully!');
         if (linkEvent.keys.length > 1) {
@@ -240,14 +233,30 @@ if (require.main === module) {
         .requiredOption('--tokenManagerType <type>', 'Token manager type (native, mintBurnFrom, lockUnlock, lockUnlockFee, mintBurn)')
         .option('--operator <address>', 'Operator address for the linked token (defaults to current account)')
         .requiredOption('--gasValue <value>', 'Gas value for cross-chain linking')
-        .requiredOption('--gasToken <token>', 'Gas token (STRK or ETH)', 'STRK');
+        .option('--gasToken <token>', 'Gas token (only STRK is supported currently)', 'STRK')
+        .addHelpText('after', `
+Examples:
+  Link token using STRK for gas:
+    $ link-token --salt my-salt --destinationChain polygon --destinationTokenAddress 0x... --tokenManagerType lockUnlock --gasValue 1000000000000000000
+
+  Link token with custom operator:
+    $ link-token --salt my-salt --destinationChain polygon --destinationTokenAddress 0x... --tokenManagerType mintBurn --operator 0x123... --gasValue 1000000000000000000
+
+  Offline mode (generate unsigned transaction):
+    $ link-token --salt my-salt --destinationChain polygon --destinationTokenAddress 0x... --tokenManagerType lockUnlock --gasValue 1000000000000000000 --offline
+
+Note: 
+  - Only STRK is currently supported as gas token
+  - The salt should match the one used during token registration
+  - Token manager types: native, mintBurnFrom, lockUnlock, lockUnlockFee, mintBurn
+  - Gas value should be specified in Wei (18 decimals)`);
 
     addStarknetOptions(program);
 
     program.action(async (options) => {
         const config = loadConfig(options.env);
         const chain = config.chains[STARKNET_CHAIN];
-        
+
         if (!chain) {
             throw new Error('Starknet configuration not found');
         }

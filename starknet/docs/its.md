@@ -119,7 +119,7 @@ npx ts-node starknet/its/deploy-itf.ts \
 Deploy a new interchain token locally via the InterchainTokenFactory.
 
 ```
-Usage: its-deploy-token [options]
+Usage: deploy-token [options]
 
 Deploy a new interchain token on Starknet via InterchainTokenFactory
 
@@ -165,7 +165,7 @@ npx ts-node starknet/its/deploy-token.ts --salt my-token-salt --name "My Token" 
 ### Register Custom Token
 
 ```
-Usage: its-register-token [options]
+Usage: register-token [options]
 
 Register an existing token for cross-chain use
 
@@ -197,7 +197,7 @@ npx ts-node starknet/its/register-token.ts --salt my-salt --tokenAddress 0x... -
 ### Register Canonical Token
 
 ```
-Usage: its-register-canonical-token [options]
+Usage: register-canonical-token [options]
 
 Register a canonical token for cross-chain use (uses lock/unlock mechanism)
 
@@ -228,7 +228,7 @@ npx ts-node starknet/its/register-canonical-token.ts --tokenAddress 0x... --priv
 ### Interchain Transfer
 
 ```
-Usage: its-transfer [options]
+Usage: transfer [options]
 
 Transfer tokens across chains using InterchainTokenService
 
@@ -262,7 +262,7 @@ npx ts-node starknet/its/transfer.ts --tokenId 0x... --destinationChain ethereum
 ### Link Token
 
 ```
-Usage: its-link-token [options]
+Usage: link-token [options]
 
 Link a token across chains using InterchainTokenService
 
@@ -300,7 +300,7 @@ npx ts-node starknet/its/link-token.ts --salt my-link-salt --destinationChain po
 ### Deploy Remote Canonical Token
 
 ```
-Usage: its-deploy-remote-canonical-token [options]
+Usage: deploy-remote-canonical-token [options]
 
 Deploy a canonical token representation on a remote chain
 
@@ -335,7 +335,7 @@ npx ts-node starknet/its/deploy-remote-canonical-token.ts --tokenAddress 0x... -
 ### Manage Trusted Chains
 
 ```
-Usage: its-manage-chains [options]
+Usage: manage-chains [options]
 
 Manage trusted chains in InterchainTokenService
 
@@ -356,13 +356,13 @@ Options:
 
 Examples:
   Add a trusted chain:
-    $ its-manage-chains --action add --chainName ethereum
+    $ manage-chains --action add --chainName ethereum
 
   Remove a trusted chain:
-    $ its-manage-chains --action remove --chainName polygon
+    $ manage-chains --action remove --chainName polygon
 
   Check if a chain is trusted:
-    $ its-manage-chains --action check --chainName avalanche
+    $ manage-chains --action check --chainName avalanche
 
 Note: Only the contract owner can add or remove trusted chains.
 The 'check' action can be performed by anyone.
@@ -371,7 +371,7 @@ The 'check' action can be performed by anyone.
 ### Set Flow Limits
 
 ```
-Usage: its-flow-limits [options]
+Usage: flow-limits [options]
 
 Set flow limits for multiple tokens in InterchainTokenService
 
@@ -394,10 +394,10 @@ Options:
 
 Examples:
   Set flow limit for a single token:
-    $ its-flow-limits --tokenIds 0x123...abc --flowLimits 1000000
+    $ flow-limits --tokenIds 0x123...abc --flowLimits 1000000
 
   Set flow limits for multiple tokens:
-    $ its-flow-limits --tokenIds 0x123...abc,0x456...def,0x789...ghi --flowLimits 1000000,2000000,500000
+    $ flow-limits --tokenIds 0x123...abc,0x456...def,0x789...ghi --flowLimits 1000000,2000000,500000
 
 Note: The number of token IDs must match the number of flow limits.
 Flow limits are specified in the smallest unit of the token (e.g., wei for 18 decimal tokens).
@@ -406,7 +406,7 @@ Flow limits are specified in the smallest unit of the token (e.g., wei for 18 de
 ### Manage Service
 
 ```
-Usage: its-manage-service [options]
+Usage: manage-service [options]
 
 Manage InterchainTokenService settings and status
 
@@ -431,19 +431,19 @@ Options:
 
 Examples:
   Pause the service:
-    $ its-manage-service --action pause
+    $ manage-service --action pause
 
   Unpause the service:
-    $ its-manage-service --action unpause
+    $ manage-service --action unpause
 
   Transfer ownership:
-    $ its-manage-service --action transfer-ownership --newOwner 0x123...
+    $ manage-service --action transfer-ownership --newOwner 0x123...
 
   Set factory address:
-    $ its-manage-service --action set-factory --factoryAddress 0x456...
+    $ manage-service --action set-factory --factoryAddress 0x456...
 
   Check service status:
-    $ its-manage-service --action check-status
+    $ manage-service --action check-status
 
 Note: Most actions require owner privileges.
 The 'check-status' action can be performed by anyone.
@@ -454,7 +454,7 @@ The 'check-status' action can be performed by anyone.
 ### Query ITS Information
 
 ```
-Usage: its-query [options]
+Usage: query [options]
 
 Query InterchainTokenService for token and chain information
 
@@ -481,25 +481,25 @@ Options:
 
 Examples:
   Get token manager address:
-    $ its-query --query token-manager --tokenId 0x123...
+    $ query --query token-manager --tokenId 0x123...
 
   Get registered token address:
-    $ its-query --query token-address --tokenId 0x123...
+    $ query --query token-address --tokenId 0x123...
 
   Get predicted interchain token address:
-    $ its-query --query interchain-token-address --tokenId 0x123...
+    $ query --query interchain-token-address --tokenId 0x123...
 
   Get chain name:
-    $ its-query --query chain-name
+    $ query --query chain-name
 
   Check if chain is trusted:
-    $ its-query --query trusted-chain --chainName ethereum
+    $ query --query trusted-chain --chainName ethereum
 
   Get flow limit information:
-    $ its-query --query flow-limit --tokenId 0x123...
+    $ query --query flow-limit --tokenId 0x123...
 
   Get complete token information:
-    $ its-query --query token-info --tokenId 0x123...
+    $ query --query token-info --tokenId 0x123...
 ```
 
 ## Utility Commands
@@ -507,7 +507,7 @@ Examples:
 ### Calculate Token ID
 
 ```
-Usage: its-calculate-token-id [options]
+Usage: calculate-token-id [options]
 
 Calculate deterministic token IDs for InterchainTokenService
 
@@ -538,75 +538,18 @@ Options:
 
 Examples:
   Calculate interchain token ID:
-    $ its-calculate-token-id --type interchain --deployer 0x123... --salt my-salt
+    $ calculate-token-id --type interchain --deployer 0x123... --salt my-salt
 
   Calculate canonical token ID:
-    $ its-calculate-token-id --type canonical --tokenAddress 0x456...
+    $ calculate-token-id --type canonical --tokenAddress 0x456...
 
   Calculate linked token ID:
-    $ its-calculate-token-id --type linked --deployer 0x789... --salt link-salt
+    $ calculate-token-id --type linked --deployer 0x789... --salt link-salt
 
 Token ID Types:
   - interchain: For tokens deployed via deploy_interchain_token
   - canonical: For existing tokens registered as canonical
   - linked: For tokens linked via the factory
-```
-
-## Testing
-
-### End-to-End Test Flow
-
-```
-Usage: its-test-flow [options]
-
-Run an end-to-end test of InterchainTokenService functionality
-
-Options:
-  --tokenName <name>                 Token name (default: "Test Token")
-  --tokenSymbol <symbol>             Token symbol (default: "TEST")
-  --tokenDecimals <decimals>         Token decimals (default: "18")
-  --initialSupply <amount>           Initial supply (in whole tokens) (default:
-                                     "1000000")
-  --salt <salt>                      Deployment salt (defaults to
-                                     timestamp-based)
-  --destinationChain <chain>         Destination chain for transfer (default:
-                                     "ethereum")
-  --transferAmount <amount>          Amount to transfer (in whole tokens)
-                                     (default: "100")
-  --skipDeployment                   Skip token deployment and use existing
-                                     token
-  --tokenId <id>                     Token ID to use (required if
-                                     --skipDeployment)
-  -e, --env <env>                    environment (choices: "devnet-amplifier",
-                                     "mainnet", "stagenet", "testnet", default:
-                                     "testnet", env: ENV)
-  -y, --yes                          skip deployment prompt confirmation (env:
-                                     YES)
-  -p, --privateKey < privateKey >    private key for Starknet account(testnet
-                                     only, not required for offline tx
-                                     generation) (env: STARKNET_PRIVATE_KEY)
-  --accountAddress <accountAddress>  Starknet account address (env:
-                                     STARKNET_ACCOUNT_ADDRESS)
-  -h, --help                         display help for command
-
-This script demonstrates a complete ITS workflow:
-1. Deploy a new interchain token (or use existing)
-2. Query token information
-3. Check destination chain trust
-4. Initiate an interchain transfer
-5. Verify the balance change
-
-Examples:
-  Full test with new token deployment:
-    $ its-test-flow --tokenName "My Token" --tokenSymbol "MTK"
-
-  Test with existing token:
-    $ its-test-flow --skipDeployment --tokenId 0x123...
-
-  Custom transfer amount and destination:
-    $ its-test-flow --transferAmount 500 --destinationChain polygon
-
-Note: Ensure you have sufficient balance for gas payments.
 ```
 
 ## Offline Signing Support

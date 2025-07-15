@@ -12,7 +12,7 @@ import {
     validateStarknetOptions,
     estimateGasAndDisplayArgs,
 } from '../utils';
-import { CallData, Call, Contract, byteArray, num } from 'starknet';
+import { CallData, Call, Contract, byteArray, num, CairoCustomEnum } from 'starknet';
 import {
     Config,
     ChainConfig,
@@ -27,13 +27,13 @@ interface RegisterTokenOptions extends GatewayCommandOptions {
     operator?: string;
 }
 
-// Token Manager Types mapping
+// Token Manager Types mapping for Cairo enum
 const TOKEN_MANAGER_TYPES = {
-    'native': 0,        // NativeInterchainToken
-    'mintBurnFrom': 1,  // MintBurnFrom
-    'lockUnlock': 2,    // LockUnlock
-    'lockUnlockFee': 3, // LockUnlockFee
-    'mintBurn': 4,      // MintBurn
+    'native': 'NativeInterchainToken',
+    'mintBurnFrom': 'MintBurnFrom',
+    'lockUnlock': 'LockUnlock',
+    'lockUnlockFee': 'LockUnlockFee',
+    'mintBurn': 'MintBurn',
 };
 
 /**
@@ -79,15 +79,15 @@ async function processCommand(
     }
 
     // Validate token manager type
-    const tokenManagerTypeValue = TOKEN_MANAGER_TYPES[tokenManagerType];
-    if (tokenManagerTypeValue === undefined) {
+    const tokenManagerTypeEnum = TOKEN_MANAGER_TYPES[tokenManagerType];
+    if (tokenManagerTypeEnum === undefined) {
         throw new Error(`Invalid token manager type: ${tokenManagerType}. Valid types are: ${Object.keys(TOKEN_MANAGER_TYPES).join(', ')}`);
     }
 
     console.log(`\nRegistering Custom Token:`);
     console.log(`- Salt: ${salt}`);
     console.log(`- Token Address: ${tokenAddress}`);
-    console.log(`- Token Manager Type: ${tokenManagerType} (${tokenManagerTypeValue})`);
+    console.log(`- Token Manager Type: ${tokenManagerType} (${tokenManagerTypeEnum})`);
     console.log(`- Operator: ${operator || 'current account'}`);
 
     // Get the account address for operator if not provided
@@ -106,8 +106,8 @@ async function processCommand(
     const calldata = CallData.compile([
         salt, // salt: felt252
         tokenAddress, // token_address: ContractAddress
-        tokenManagerTypeValue, // token_manager_type: TokenManagerType (enum as felt252)
-        byteArray.byteArrayFromString(operatorAddress || ''), // link_params: ByteArray (operator address)
+        new CairoCustomEnum({ [tokenManagerTypeEnum]: {} }), // token_manager_type: TokenManagerType enum
+        operatorAddress ? byteArray.byteArrayFromString(operatorAddress) : [], // link_params: ByteArray (operator address, empty if not provided)
     ]);
 
     const hexCalldata = calldata.map(item => num.toHex(item));
@@ -190,8 +190,8 @@ async function processCommand(
     const tx = await itsContract.register_custom_token(
         salt,
         tokenAddress,
-        tokenManagerTypeValue,
-        byteArray.byteArrayFromString(operatorAddress || '')
+        new CairoCustomEnum({ [tokenManagerTypeEnum]: {} }),
+        operatorAddress || ''
     );
 
     console.log('Transaction hash:', tx.transaction_hash);
