@@ -31,74 +31,75 @@ interface TransferOptions extends GatewayCommandOptions {
 }
 
 /**
- * Validate and parse hex string to ensure it's valid
- * @param hexString - Hex string with or without 0x prefix
- * @returns Cleaned hex string without prefix
+ * Detect if input is hex string or regular string
+ * @returns {isHex: boolean, cleanHex?: string}
  */
-function validateAndParseHexString(hexString: string): string {
-    // Remove 0x prefix if present
-    const cleanHex = hexString.startsWith('0x') ? hexString.slice(2) : hexString;
-
-    // Validate hex format
-    if (!/^[0-9a-fA-F]*$/.test(cleanHex)) {
-        throw new Error('Data must be a valid hex string containing only 0-9, a-f, A-F characters');
+function detectDataFormat(data: string): { isHex: boolean; cleanHex?: string } {
+    // Only treat as hex if it starts with 0x
+    if (data.startsWith('0x')) {
+        const cleanHex = data.slice(2);
+        // Validate hex format
+        if (/^[0-9a-fA-F]*$/.test(cleanHex) && cleanHex.length % 2 === 0) {
+            return { isHex: true, cleanHex };
+        }
+        throw new Error('Invalid hex format after 0x prefix - must contain only 0-9, a-f, A-F and have even length');
     }
-
-    // Ensure even length (each byte = 2 hex chars)
-    if (cleanHex.length % 2 !== 0) {
-        throw new Error('Hex string must have even length (each byte requires 2 hex characters)');
-    }
-
-    return cleanHex;
+    
+    // Everything else is treated as a string
+    return { isHex: false };
 }
 
 /**
- * Convert hex string to a format suitable for ByteArray
+ * Convert data (hex or string) to ByteArray format
  * For use with CallData.compile
  */
-function hexStringToByteArrayStruct(hexString: string): any {
-    // Validate and clean the hex string
-    const cleanHex = validateAndParseHexString(hexString);
+function dataToByteArrayStruct(data: string): any {
+    const { isHex, cleanHex } = detectDataFormat(data);
+    
+    if (isHex && cleanHex) {
+        // Handle as hex bytes
+        if (cleanHex.length === 0) {
+            return {
+                data: [],
+                pending_word: '0x0',
+                pending_word_len: 0
+            };
+        }
+        
+        // Convert hex to bytes
+        const bytes = Buffer.from(cleanHex, 'hex');
 
-    // If empty, return empty ByteArray
-    if (cleanHex.length === 0) {
+        // Build ByteArray structure manually
+        const dataArray: string[] = [];
+        let offset = 0;
+
+        // Process 31-byte chunks
+        while (offset + 31 <= bytes.length) {
+            const chunk = bytes.slice(offset, offset + 31);
+            // Convert chunk to hex string with 0x prefix
+            dataArray.push('0x' + chunk.toString('hex'));
+            offset += 31;
+        }
+
+        // Handle remaining bytes (pending_word)
+        let pending_word = '0x0';
+        let pending_word_len = 0;
+
+        if (offset < bytes.length) {
+            const remaining = bytes.slice(offset);
+            pending_word = '0x' + remaining.toString('hex');
+            pending_word_len = remaining.length;
+        }
+
         return {
-            data: [],
-            pending_word: '0x0',
-            pending_word_len: 0
+            data: dataArray,
+            pending_word,
+            pending_word_len
         };
+    } else {
+        // Handle as UTF-8 string - use starknet.js's byteArrayFromString
+        return byteArray.byteArrayFromString(data);
     }
-
-    // Convert hex to bytes
-    const bytes = Buffer.from(cleanHex, 'hex');
-
-    // Build ByteArray structure manually
-    const data: string[] = [];
-    let offset = 0;
-
-    // Process 31-byte chunks
-    while (offset + 31 <= bytes.length) {
-        const chunk = bytes.slice(offset, offset + 31);
-        // Convert chunk to hex string with 0x prefix
-        data.push('0x' + chunk.toString('hex'));
-        offset += 31;
-    }
-
-    // Handle remaining bytes (pending_word)
-    let pending_word = '0x0';
-    let pending_word_len = 0;
-
-    if (offset < bytes.length) {
-        const remaining = bytes.slice(offset);
-        pending_word = '0x' + remaining.toString('hex');
-        pending_word_len = remaining.length;
-    }
-
-    return {
-        data,
-        pending_word,
-        pending_word_len
-    };
 }
 
 /**
@@ -142,7 +143,7 @@ async function processCommand(
     // Validate data format if provided
     if (data) {
         try {
-            validateAndParseHexString(data);
+            detectDataFormat(data); // This will throw if invalid hex after 0x
         } catch (error) {
             throw new Error(`Invalid data format: ${error.message}`);
         }
@@ -160,7 +161,12 @@ async function processCommand(
     console.log(`- Destination Chain: ${destinationChain}`);
     console.log(`- Destination Address: ${destinationAddress}`);
     console.log(`- Amount: ${amount}`);
-    console.log(`- Data: ${data || 'none'} ${data ? '(hex bytes)' : ''}`);
+    if (data) {
+        const { isHex } = detectDataFormat(data);
+        console.log(`- Data: ${data} (${isHex ? 'hex bytes' : 'string'})`);
+    } else {
+        console.log(`- Data: none`);
+    }
     console.log(`- Gas Value: ${gasValue}`);
     console.log(`- Gas Token: ${gasToken} (only STRK is supported currently)`);
 
@@ -173,7 +179,7 @@ async function processCommand(
     }
 
     // Build calldata for interchain_transfer
-    const dataByteArray = data ? hexStringToByteArrayStruct(data) : { data: [], pending_word: '0x0', pending_word_len: 0 };
+    const dataByteArray = data ? dataToByteArrayStruct(data) : { data: [], pending_word: '0x0', pending_word_len: 0 };
     const calldata = CallData.compile([
         tokenIdUint256, // token_id: u256
         destinationChain, // destination_chain: felt252
@@ -305,19 +311,24 @@ if (require.main === module) {
         .requiredOption('--destinationChain <chain>', 'Destination chain name')
         .requiredOption('--destinationAddress <address>', 'Destination address')
         .requiredOption('--amount <amount>', 'Amount to transfer (in smallest unit)')
-        .option('--data <data>', 'Optional data as hex string (e.g., 0x1234abcd or 1234abcd)')
+        .option('--data <data>', 'Optional data (hex bytes with 0x prefix, or UTF-8 string)')
         .requiredOption('--gasValue <value>', 'Gas value for cross-chain execution')
         .option('--gasToken <token>', 'Gas token (only STRK is supported currently)', 'STRK')
         .addHelpText('after', `
 Examples:
-  Transfer with data:
+  Transfer with hex data:
     $ transfer --tokenId 0x123... --destinationChain ethereum --destinationAddress 0x456... --amount 1000 --data 0xdeadbeef --gasValue 100000
+  
+  Transfer with string data:
+    $ transfer --tokenId 0x123... --destinationChain ethereum --destinationAddress 0x456... --amount 1000 --data "Hello World" --gasValue 100000
+    $ transfer --tokenId 0x123... --destinationChain ethereum --destinationAddress 0x456... --amount 1000 --data cafe --gasValue 100000
   
   Transfer without data:
     $ transfer --tokenId 0x123... --destinationChain ethereum --destinationAddress 0x456... --amount 1000 --gasValue 100000
 
-Note: The --data parameter expects raw bytes as a hex string (with or without 0x prefix).
-Each byte must be represented by exactly 2 hex characters.`);
+Note: The --data parameter accepts:
+  - Hex bytes: Must start with 0x prefix (e.g., 0xdeadbeef)
+  - Strings: Everything else is treated as UTF-8 string (e.g., "Hello", cafe, deadbeef)`);
 
     addStarknetOptions(program);
 
