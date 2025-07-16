@@ -236,7 +236,7 @@ Options:
   --destinationChain <chain>         Destination chain name
   --destinationAddress <address>     Destination address
   --amount <amount>                  Amount to transfer (in smallest unit)
-  --data <data>                      Optional data for contract execution
+  --data <data>                      Optional data for contract execution when `destinationAddress` is a contract address
   --gasValue <value>                 Gas value for cross-chain execution
   --gasToken <token>                 Gas token (currently only STRK is supported)
                                      (default: "STRK")
