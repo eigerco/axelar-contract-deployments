@@ -38,39 +38,67 @@ interface TransferOptions extends GatewayCommandOptions {
 function validateAndParseHexString(hexString: string): string {
     // Remove 0x prefix if present
     const cleanHex = hexString.startsWith('0x') ? hexString.slice(2) : hexString;
-    
+
     // Validate hex format
     if (!/^[0-9a-fA-F]*$/.test(cleanHex)) {
         throw new Error('Data must be a valid hex string containing only 0-9, a-f, A-F characters');
     }
-    
+
     // Ensure even length (each byte = 2 hex chars)
     if (cleanHex.length % 2 !== 0) {
         throw new Error('Hex string must have even length (each byte requires 2 hex characters)');
     }
-    
+
     return cleanHex;
 }
 
 /**
- * Convert hex string (raw bytes) directly to Cairo ByteArray format
- * This creates a ByteArray where the hex bytes are interpreted as raw data
+ * Convert hex string to a format suitable for ByteArray
+ * For use with CallData.compile
  */
-function hexStringToByteArray(hexString: string): any {
+function hexStringToByteArrayStruct(hexString: string): any {
     // Validate and clean the hex string
     const cleanHex = validateAndParseHexString(hexString);
-    
+
     // If empty, return empty ByteArray
     if (cleanHex.length === 0) {
-        return [];
+        return {
+            data: [],
+            pending_word: '0x0',
+            pending_word_len: 0
+        };
     }
-    
-    // Convert hex string to bytes, then to string for byteArrayFromString
-    // This preserves the raw byte interpretation
+
+    // Convert hex to bytes
     const bytes = Buffer.from(cleanHex, 'hex');
-    
-    // Convert to ByteArray using starknet.js
-    return byteArray.byteArrayFromString(bytes.toString('latin1'));
+
+    // Build ByteArray structure manually
+    const data: string[] = [];
+    let offset = 0;
+
+    // Process 31-byte chunks
+    while (offset + 31 <= bytes.length) {
+        const chunk = bytes.slice(offset, offset + 31);
+        // Convert chunk to hex string with 0x prefix
+        data.push('0x' + chunk.toString('hex'));
+        offset += 31;
+    }
+
+    // Handle remaining bytes (pending_word)
+    let pending_word = '0x0';
+    let pending_word_len = 0;
+
+    if (offset < bytes.length) {
+        const remaining = bytes.slice(offset);
+        pending_word = '0x' + remaining.toString('hex');
+        pending_word_len = remaining.length;
+    }
+
+    return {
+        data,
+        pending_word,
+        pending_word_len
+    };
 }
 
 /**
@@ -110,7 +138,7 @@ async function processCommand(
 
     // Validate execution options
     validateStarknetOptions(options.env, offline, privateKey, accountAddress);
-    
+
     // Validate data format if provided
     if (data) {
         try {
@@ -145,7 +173,7 @@ async function processCommand(
     }
 
     // Build calldata for interchain_transfer
-    const dataByteArray = data ? hexStringToByteArray(data) : [];
+    const dataByteArray = data ? hexStringToByteArrayStruct(data) : { data: [], pending_word: '0x0', pending_word_len: 0 };
     const calldata = CallData.compile([
         tokenIdUint256, // token_id: u256
         destinationChain, // destination_chain: felt252
@@ -226,33 +254,39 @@ async function processCommand(
 
     console.log('\nExecuting interchain_transfer...');
 
-    const tx = await itsContract.interchain_transfer(
-        tokenIdUint256,
-        destinationChain,
-        destinationAddress,
-        uint256.bnToUint256(amount),
-        data ? hexStringToByteArray(data) : [],
-        uint256.bnToUint256(gasValue),
-        gasToken === 'ETH' ? new CairoCustomEnum({ Eth: {} }) : new CairoCustomEnum({ Strk: {} })
-    );
+    // Use the pre-compiled calldata for the transaction
+    const tx = await account.execute({
+        contractAddress: itsConfig.address,
+        entrypoint: 'interchain_transfer',
+        calldata: hexCalldata
+    });
 
     console.log('Transaction hash:', tx.transaction_hash);
     console.log('\nWaiting for transaction to be accepted...');
 
-    const receipt = await tx.wait();
-    console.log('Transaction accepted in block:', receipt.block_number);
+    const receipt = await provider.waitForTransaction(tx.transaction_hash);
+    console.log('Transaction accepted');
+
+    // Check if receipt has the expected properties
+    if ('block_number' in receipt) {
+        console.log('Block number:', receipt.block_number);
+    }
 
     // Parse InterchainTransferSent event
-    const transferEvent = receipt.events?.find(event =>
-        event.keys[0] === num.toHex(num.getDecimalString('InterchainTransferSent'))
-    );
+    if ('events' in receipt && Array.isArray(receipt.events)) {
+        const transferEvent = receipt.events.find(event =>
+            event.keys[0] === num.toHex(num.getDecimalString('InterchainTransferSent'))
+        );
 
-    if (transferEvent) {
-        console.log('\nInterchain transfer initiated successfully!');
-        console.log('Transfer details from event:');
-        console.log('- Token ID:', transferEvent.keys[1]);
-        console.log('- Source Address:', transferEvent.keys[2]);
-        console.log('- Data Hash:', transferEvent.keys[3]);
+        if (transferEvent) {
+            console.log('\nInterchain transfer initiated successfully!');
+            console.log('Transfer details from event:');
+            console.log('- Token ID:', transferEvent.keys[1]);
+            console.log('- Source Address:', transferEvent.keys[2]);
+            console.log('- Data Hash:', transferEvent.keys[3]);
+        } else {
+            console.log('\nTransaction completed. Check explorer for transfer details.');
+        }
     } else {
         console.log('\nTransaction completed. Check explorer for transfer details.');
     }
