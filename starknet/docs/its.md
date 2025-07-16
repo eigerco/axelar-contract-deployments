@@ -156,7 +156,7 @@ Deploy with initial supply:
 npx ts-node starknet/its/deploy-token.ts --salt my-token-salt --name "My Token" --symbol "MTK" --decimals 18 --initialSupply 1000000 --minter 0x123... --privateKey 0x... --accountAddress 0x...
 ```
 
-Deploy without initial supply (minter gets set directly):
+Deploy without initial supply (minter is required in this case):
 ```bash
 npx ts-node starknet/its/deploy-token.ts --salt my-token-salt --name "My Token" --symbol "MTK" --decimals 18 --minter 0x456... --privateKey 0x... --accountAddress 0x...
 ```
