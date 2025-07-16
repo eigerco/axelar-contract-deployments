@@ -237,6 +237,7 @@ Options:
   --destinationAddress <address>     Destination address
   --amount <amount>                  Amount to transfer (in smallest unit)
   --data <data>                      Optional data for contract execution when `destinationAddress` is a contract address
+                                     (expects an array of bytes as hex string e.g. 0xabcd)
   --gasValue <value>                 Gas value for cross-chain execution
   --gasToken <token>                 Gas token (currently only STRK is supported)
                                      (default: "STRK")
@@ -411,11 +412,11 @@ Manage InterchainTokenService settings and status
 
 Options:
   --action <action>                  Action to perform (pause, unpause,
-                                     transfer-ownership, set-factory,
+                                     transfer-ownership, set-factory-address,
                                      check-status)
   --newOwner <address>               New owner address (required for
                                      transfer-ownership)
-  --factoryAddress <address>         Factory address (required for set-factory)
+  --factoryAddress <address>         Factory address (required for set-factory-address)
   -e, --env <env>                    environment (choices: "devnet-amplifier",
                                      "mainnet", "stagenet", "testnet", default:
                                      "testnet", env: ENV)
@@ -439,7 +440,7 @@ Examples:
     $ manage-service --action transfer-ownership --newOwner 0x123...
 
   Set factory address:
-    $ manage-service --action set-factory --factoryAddress 0x456...
+    $ manage-service --action set-factory-address --factoryAddress 0x456...
 
   Check service status:
     $ manage-service --action check-status
