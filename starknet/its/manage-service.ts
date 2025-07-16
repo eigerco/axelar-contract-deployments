@@ -21,7 +21,7 @@ import {
 } from '../types';
 
 interface ManageServiceOptions extends GatewayCommandOptions {
-    action: 'pause' | 'unpause' | 'transfer-ownership' | 'set-factory' | 'check-status';
+    action: 'pause' | 'unpause' | 'transfer-ownership' | 'set-factory-address' | 'check-status';
     newOwner?: string;
     factoryAddress?: string;
 }
@@ -70,9 +70,9 @@ async function processCommand(
     // For check-status action, we don't need authentication
     if (action === 'check-status') {
         const itsContract = await getITSContract(provider, itsConfig.address);
-        
+
         console.log('\nChecking service status...');
-        
+
         try {
             // Check if paused
             const pausedAbi = [
@@ -143,9 +143,9 @@ async function processCommand(
             calldata = CallData.compile([newOwner]); // new_owner: ContractAddress
             console.log(`- New Owner: ${newOwner}`);
             break;
-        case 'set-factory':
+        case 'set-factory-address':
             if (!factoryAddress) {
-                throw new Error('Factory address is required for set-factory action');
+                throw new Error('Factory address is required for set-factory-address action');
             }
             entrypoint = 'set_factory_address';
             calldata = CallData.compile([factoryAddress]); // factory_address: ContractAddress
@@ -160,7 +160,7 @@ async function processCommand(
     // Handle estimate mode
     if (estimate) {
         console.log(`\nEstimating gas for ${action} on ${chain.name}...`);
-        
+
         const account = getStarknetAccount(privateKey!, accountAddress!, provider);
         const calls: Call[] = [{
             contractAddress: itsConfig.address,
@@ -180,7 +180,7 @@ async function processCommand(
             entrypoint: entrypoint,
             calldata: hexCalldata
         }];
-        
+
         return handleOfflineTransaction(
             options,
             chain.name,
@@ -194,7 +194,7 @@ async function processCommand(
     const itsContract = await getITSContract(provider, itsConfig.address, account);
 
     // Check if we're the owner (for actions that require ownership)
-    if (['pause', 'unpause', 'transfer-ownership', 'set-factory'].includes(action)) {
+    if (['pause', 'unpause', 'transfer-ownership', 'set-factory-address'].includes(action)) {
         console.log('\nVerifying ownership...');
         try {
             const ownerAbi = [
@@ -209,7 +209,7 @@ async function processCommand(
             const ownerContract = new Contract(ownerAbi, itsConfig.address, provider);
             const owner = await ownerContract.owner();
             console.log('Current owner:', owner);
-            
+
             if (owner !== account.address) {
                 console.warn(`Warning: Current account (${account.address}) is not the owner.`);
                 console.warn('This transaction may fail if only the owner can perform this action.');
@@ -220,7 +220,7 @@ async function processCommand(
     }
 
     console.log(`\nExecuting ${entrypoint}...`);
-    
+
     let tx;
     switch (action) {
         case 'pause':
@@ -232,14 +232,14 @@ async function processCommand(
         case 'transfer-ownership':
             tx = await itsContract.transfer_ownership(newOwner);
             break;
-        case 'set-factory':
+        case 'set-factory-address':
             tx = await itsContract.set_factory_address(factoryAddress);
             break;
     }
 
     console.log('Transaction hash:', tx.transaction_hash);
     console.log('\nWaiting for transaction to be accepted...');
-    
+
     const receipt = await tx.wait();
     console.log('Transaction accepted in block:', receipt.block_number);
 
@@ -257,7 +257,7 @@ async function processCommand(
             console.log(`\nOwnership transfer initiated to: ${newOwner}`);
             console.log('Note: The new owner may need to accept ownership depending on implementation.');
             break;
-        case 'set-factory':
+        case 'set-factory-address':
             console.log(`\nInterchainTokenFactory address set to: ${factoryAddress}`);
             console.log('The factory can now deploy tokens through ITS.');
             break;
@@ -273,9 +273,9 @@ if (require.main === module) {
     program
         .name('its-manage-service')
         .description('Manage InterchainTokenService settings and status')
-        .requiredOption('--action <action>', 'Action to perform (pause, unpause, transfer-ownership, set-factory, check-status)')
+        .requiredOption('--action <action>', 'Action to perform (pause, unpause, transfer-ownership, set-factory-address, check-status)')
         .option('--newOwner <address>', 'New owner address (required for transfer-ownership)')
-        .option('--factoryAddress <address>', 'Factory address (required for set-factory)')
+        .option('--factoryAddress <address>', 'Factory address (required for set-factory-address)')
         .addHelpText('after', `
 Examples:
   Pause the service:
@@ -288,7 +288,7 @@ Examples:
     $ its-manage-service --action transfer-ownership --newOwner 0x123...
 
   Set factory address:
-    $ its-manage-service --action set-factory --factoryAddress 0x456...
+    $ its-manage-service --action set-factory-address --factoryAddress 0x456...
 
   Check service status:
     $ its-manage-service --action check-status
@@ -300,7 +300,7 @@ The 'check-status' action can be performed by anyone.`);
 
     program.action(async (options) => {
         // Validate action
-        const validActions = ['pause', 'unpause', 'transfer-ownership', 'set-factory', 'check-status'];
+        const validActions = ['pause', 'unpause', 'transfer-ownership', 'set-factory-address', 'check-status'];
         if (!validActions.includes(options.action)) {
             throw new Error(`Action must be one of: ${validActions.join(', ')}`);
         }
@@ -309,13 +309,13 @@ The 'check-status' action can be performed by anyone.`);
         if (options.action === 'transfer-ownership' && !options.newOwner) {
             throw new Error('--newOwner is required for transfer-ownership action');
         }
-        if (options.action === 'set-factory' && !options.factoryAddress) {
-            throw new Error('--factoryAddress is required for set-factory action');
+        if (options.action === 'set-factory-address' && !options.factoryAddress) {
+            throw new Error('--factoryAddress is required for set-factory-address action');
         }
 
         const config = loadConfig(options.env);
         const chain = config.chains[STARKNET_CHAIN];
-        
+
         if (!chain) {
             throw new Error('Starknet configuration not found');
         }
