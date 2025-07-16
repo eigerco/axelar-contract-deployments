@@ -31,6 +31,49 @@ interface TransferOptions extends GatewayCommandOptions {
 }
 
 /**
+ * Validate and parse hex string to ensure it's valid
+ * @param hexString - Hex string with or without 0x prefix
+ * @returns Cleaned hex string without prefix
+ */
+function validateAndParseHexString(hexString: string): string {
+    // Remove 0x prefix if present
+    const cleanHex = hexString.startsWith('0x') ? hexString.slice(2) : hexString;
+    
+    // Validate hex format
+    if (!/^[0-9a-fA-F]*$/.test(cleanHex)) {
+        throw new Error('Data must be a valid hex string containing only 0-9, a-f, A-F characters');
+    }
+    
+    // Ensure even length (each byte = 2 hex chars)
+    if (cleanHex.length % 2 !== 0) {
+        throw new Error('Hex string must have even length (each byte requires 2 hex characters)');
+    }
+    
+    return cleanHex;
+}
+
+/**
+ * Convert hex string (raw bytes) directly to Cairo ByteArray format
+ * This creates a ByteArray where the hex bytes are interpreted as raw data
+ */
+function hexStringToByteArray(hexString: string): any {
+    // Validate and clean the hex string
+    const cleanHex = validateAndParseHexString(hexString);
+    
+    // If empty, return empty ByteArray
+    if (cleanHex.length === 0) {
+        return [];
+    }
+    
+    // Convert hex string to bytes, then to string for byteArrayFromString
+    // This preserves the raw byte interpretation
+    const bytes = Buffer.from(cleanHex, 'hex');
+    
+    // Convert to ByteArray using starknet.js
+    return byteArray.byteArrayFromString(bytes.toString('latin1'));
+}
+
+/**
  * Helper function to get ITS contract instance with ABI
  */
 async function getITSContract(
@@ -67,6 +110,15 @@ async function processCommand(
 
     // Validate execution options
     validateStarknetOptions(options.env, offline, privateKey, accountAddress);
+    
+    // Validate data format if provided
+    if (data) {
+        try {
+            validateAndParseHexString(data);
+        } catch (error) {
+            throw new Error(`Invalid data format: ${error.message}`);
+        }
+    }
 
     const provider = getStarknetProvider(chain);
 
@@ -80,7 +132,7 @@ async function processCommand(
     console.log(`- Destination Chain: ${destinationChain}`);
     console.log(`- Destination Address: ${destinationAddress}`);
     console.log(`- Amount: ${amount}`);
-    console.log(`- Data: ${data || 'none'}`);
+    console.log(`- Data: ${data || 'none'} ${data ? '(hex bytes)' : ''}`);
     console.log(`- Gas Value: ${gasValue}`);
     console.log(`- Gas Token: ${gasToken} (only STRK is supported currently)`);
 
@@ -93,12 +145,13 @@ async function processCommand(
     }
 
     // Build calldata for interchain_transfer
+    const dataByteArray = data ? hexStringToByteArray(data) : [];
     const calldata = CallData.compile([
         tokenIdUint256, // token_id: u256
         destinationChain, // destination_chain: felt252
         byteArray.byteArrayFromString(destinationAddress), // destination_address: ByteArray
         uint256.bnToUint256(amount), // amount: u256
-        data ? byteArray.byteArrayFromString(data) : [], // data: ByteArray (empty if not provided)
+        dataByteArray, // data: ByteArray (empty if not provided)
         uint256.bnToUint256(gasValue), // gas_value: u256
         gasToken === 'ETH' ? new CairoCustomEnum({ Eth: {} }) : new CairoCustomEnum({ Strk: {} }), // gas_token: GasToken enum
     ]);
@@ -178,7 +231,7 @@ async function processCommand(
         destinationChain,
         destinationAddress,
         uint256.bnToUint256(amount),
-        data || '',
+        data ? hexStringToByteArray(data) : [],
         uint256.bnToUint256(gasValue),
         gasToken === 'ETH' ? new CairoCustomEnum({ Eth: {} }) : new CairoCustomEnum({ Strk: {} })
     );
@@ -218,9 +271,19 @@ if (require.main === module) {
         .requiredOption('--destinationChain <chain>', 'Destination chain name')
         .requiredOption('--destinationAddress <address>', 'Destination address')
         .requiredOption('--amount <amount>', 'Amount to transfer (in smallest unit)')
-        .option('--data <data>', 'Optional data for contract execution')
+        .option('--data <data>', 'Optional data as hex string (e.g., 0x1234abcd or 1234abcd)')
         .requiredOption('--gasValue <value>', 'Gas value for cross-chain execution')
-        .option('--gasToken <token>', 'Gas token (only STRK is supported currently)', 'STRK');
+        .option('--gasToken <token>', 'Gas token (only STRK is supported currently)', 'STRK')
+        .addHelpText('after', `
+Examples:
+  Transfer with data:
+    $ transfer --tokenId 0x123... --destinationChain ethereum --destinationAddress 0x456... --amount 1000 --data 0xdeadbeef --gasValue 100000
+  
+  Transfer without data:
+    $ transfer --tokenId 0x123... --destinationChain ethereum --destinationAddress 0x456... --amount 1000 --gasValue 100000
+
+Note: The --data parameter expects raw bytes as a hex string (with or without 0x prefix).
+Each byte must be represented by exactly 2 hex characters.`);
 
     addStarknetOptions(program);
 
