@@ -129,9 +129,8 @@ Options:
   --symbol <symbol>                  Token symbol
   --decimals <decimals>              Token decimals
   --initialSupply <amount>           Initial supply to mint (defaults to 0)
-  --minter <address>                 Minter address (if initial supply > 0,
-                                     mintership will be transferred to this
-                                     address)
+  --minter <address>                 Minter address (mintership will be
+                                     transferred to this address)
   -e, --env <env>                    environment (choices: "devnet-amplifier",
                                      "mainnet", "stagenet", "testnet", default:
                                      "testnet", env: ENV)
