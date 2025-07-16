@@ -79,20 +79,35 @@ async function processCommand(
         throw new Error('InterchainTokenFactory contract not found in configuration. Please deploy ITF first.');
     }
 
+    // Validate and set minter based on initial supply
+    let minterAddress: string;
+
+    if (initialSupply === '0') {
+        // When initial supply is 0, a minter address is required
+        if (!minter) {
+            throw new Error('Minter address is required when initial supply is 0');
+        }
+        minterAddress = minter;
+    } else {
+        // When initial supply > 0, the contract sets minter to contract address
+        // So we pass 0x0 and the contract will handle it
+        minterAddress = '0x0';
+    }
+
     console.log(`\nDeploying Interchain Token via Factory:`);
     console.log(`- Name: ${name}`);
     console.log(`- Symbol: ${symbol}`);
     console.log(`- Decimals: ${decimals}`);
     console.log(`- Salt: ${salt}`);
     console.log(`- Initial Supply: ${initialSupply}`);
-    console.log(`- Minter: ${minter || 'deployer (if initial supply > 0) or zero address'}`);
+    if (initialSupply === '0') {
+        console.log(`- Minter: ${minterAddress}`);
+    } else {
+        console.log(`- Minter: Contract will set to token contract address (initial supply > 0)`);
+    }
     if (destinationChain) {
         console.log(`- Note: Factory only supports local deployment. Cross-chain deployment requires separate command.`);
     }
-
-    // Get the account address for minter if not provided
-    // Note: If initial supply > 0, the factory will handle minting and transfer mintership
-    let minterAddress = minter || '0x0'; // Use zero address if no minter specified
 
     // Build calldata for deploy_interchain_token on factory
     const calldata = CallData.compile([
