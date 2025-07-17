@@ -144,12 +144,20 @@ async function processCommand(
             console.log(`- New Owner: ${newOwner}`);
             break;
         case 'set-factory-address':
-            if (!factoryAddress) {
-                throw new Error('Factory address is required for set-factory-address action');
+            // Try to get factory address from config if not provided
+            let finalFactoryAddress = factoryAddress;
+            if (!finalFactoryAddress) {
+                const factoryConfig = getContractConfig(config, chain.name, 'InterchainTokenFactory');
+                if (factoryConfig.address) {
+                    finalFactoryAddress = factoryConfig.address;
+                    console.log(`- Using factory address from config: ${finalFactoryAddress}`);
+                } else {
+                    throw new Error('Factory address is required. Either provide --factoryAddress or ensure InterchainTokenFactory is configured');
+                }
             }
             entrypoint = 'set_factory_address';
-            calldata = CallData.compile([factoryAddress]); // factory_address: ContractAddress
-            console.log(`- Factory Address: ${factoryAddress}`);
+            calldata = CallData.compile([finalFactoryAddress]); // factory_address: ContractAddress
+            console.log(`- Factory Address: ${finalFactoryAddress}`);
             break;
         default:
             throw new Error(`Invalid action: ${action}`);
@@ -233,7 +241,10 @@ async function processCommand(
             tx = await itsContract.transfer_ownership(newOwner);
             break;
         case 'set-factory-address':
-            tx = await itsContract.set_factory_address(factoryAddress);
+            // Use the same finalFactoryAddress that was determined earlier
+            const factoryToSet = factoryAddress || 
+                getContractConfig(config, chain.name, 'InterchainTokenFactory').address;
+            tx = await itsContract.set_factory_address(factoryToSet);
             break;
     }
 
@@ -258,7 +269,9 @@ async function processCommand(
             console.log('Note: The new owner may need to accept ownership depending on implementation.');
             break;
         case 'set-factory-address':
-            console.log(`\nInterchainTokenFactory address set to: ${factoryAddress}`);
+            const setFactoryAddress = factoryAddress || 
+                getContractConfig(config, chain.name, 'InterchainTokenFactory').address;
+            console.log(`\nInterchainTokenFactory address set to: ${setFactoryAddress}`);
             console.log('The factory can now deploy tokens through ITS.');
             break;
     }
@@ -275,7 +288,7 @@ if (require.main === module) {
         .description('Manage InterchainTokenService settings and status')
         .requiredOption('--action <action>', 'Action to perform (pause, unpause, transfer-ownership, set-factory-address, check-status)')
         .option('--newOwner <address>', 'New owner address (required for transfer-ownership)')
-        .option('--factoryAddress <address>', 'Factory address (required for set-factory-address)')
+        .option('--factoryAddress <address>', 'Factory address (defaults to config value for set-factory-address)')
         .addHelpText('after', `
 Examples:
   Pause the service:
@@ -287,7 +300,8 @@ Examples:
   Transfer ownership:
     $ its-manage-service --action transfer-ownership --newOwner 0x123...
 
-  Set factory address:
+  Set factory address (uses config value if not specified):
+    $ its-manage-service --action set-factory-address
     $ its-manage-service --action set-factory-address --factoryAddress 0x456...
 
   Check service status:
@@ -309,9 +323,7 @@ The 'check-status' action can be performed by anyone.`);
         if (options.action === 'transfer-ownership' && !options.newOwner) {
             throw new Error('--newOwner is required for transfer-ownership action');
         }
-        if (options.action === 'set-factory-address' && !options.factoryAddress) {
-            throw new Error('--factoryAddress is required for set-factory-address action');
-        }
+        // Note: factoryAddress validation is now handled inside processCommand for set-factory-address
 
         const config = loadConfig(options.env);
         const chain = config.chains[STARKNET_CHAIN];

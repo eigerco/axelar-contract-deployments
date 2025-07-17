@@ -416,7 +416,8 @@ Options:
                                      check-status)
   --newOwner <address>               New owner address (required for
                                      transfer-ownership)
-  --factoryAddress <address>         Factory address (required for set-factory-address)
+  --factoryAddress <address>         Factory address to set (required for set-factory-address
+                                     and defaults to the config value, unless this flag is used)
   -e, --env <env>                    environment (choices: "devnet-amplifier",
                                      "mainnet", "stagenet", "testnet", default:
                                      "testnet", env: ENV)
