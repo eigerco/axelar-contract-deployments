@@ -23,7 +23,6 @@ We provide four consolidated scripts that organize all ITS operations:
 - [Deployment](#deployment)
   - [Deploy InterchainTokenService](#deploy-interchaintokenservice)
   - [Deploy InterchainTokenFactory](#deploy-interchaintokenfactory)
-- [Consolidated Script Usage](#consolidated-script-usage)
   - [ITS Script](#its-script)
   - [ITF Script](#itf-script)
   - [TokenManager Script](#tokenmanager-script)
@@ -129,10 +128,6 @@ npx ts-node starknet/its/deploy-itf.ts \
   --privateKey 0x... \
   --accountAddress 0x...
 ```
-
-## Consolidated Script Usage
-
-The following sections describe the new consolidated scripts that provide a cleaner interface for all ITS operations.
 
 ### ITS Script
 
