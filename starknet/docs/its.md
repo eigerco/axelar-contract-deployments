@@ -1,17 +1,35 @@
 # InterchainTokenService (ITS) Commands
 
-This guide covers all available commands for managing the InterchainTokenService on Starknet. All commands support both online and offline execution modes.
+This guide covers the consolidated ITS ecosystem scripts for managing cross-chain token operations on Starknet. All commands support both online and offline execution modes.
+
+## Overview
+
+The ITS ecosystem provides a comprehensive suite for cross-chain token operations through four main components:
+
+1. **InterchainTokenService (ITS)** - Core service for cross-chain token operations
+2. **InterchainTokenFactory (ITF)** - Factory for deploying and managing interchain tokens
+3. **TokenManager** - Manages individual token operations and flow limits
+4. **InterchainToken** - ERC20 tokens with minting/burning capabilities
+
+## Consolidated Scripts
+
+We provide four consolidated scripts that organize all ITS operations:
+- `its.ts` - InterchainTokenService operations
+- `itf.ts` - InterchainTokenFactory operations
+- `token-manager.ts` - TokenManager operations
+- `interchain-token.ts` - InterchainToken operations
 
 ## Table of Contents
 - [Deployment](#deployment)
   - [Deploy InterchainTokenService](#deploy-interchaintokenservice)
   - [Deploy InterchainTokenFactory](#deploy-interchaintokenfactory)
-- [Token Operations](#token-operations)
-- [Cross-Chain Operations](#cross-chain-operations)
-- [Management Operations](#management-operations)
-- [Query Operations](#query-operations)
-- [Utility Commands](#utility-commands)
-- [Testing](#testing)
+- [Consolidated Script Usage](#consolidated-script-usage)
+  - [ITS Script](#its-script)
+  - [ITF Script](#itf-script)
+  - [TokenManager Script](#tokenmanager-script)
+  - [InterchainToken Script](#interchaintoken-script)
+- [Offline Signing Support](#offline-signing-support)
+- [Implementation Status](#implementation-status)
 
 ## Deployment
 
@@ -112,445 +130,207 @@ npx ts-node starknet/its/deploy-itf.ts \
   --accountAddress 0x...
 ```
 
-## Token Operations
+## Consolidated Script Usage
 
-### Deploy Interchain Token
+The following sections describe the new consolidated scripts that provide a cleaner interface for all ITS operations.
 
-Deploy a new interchain token locally via the InterchainTokenFactory.
+### ITS Script
 
+The main entry point for InterchainTokenService core operations.
+
+```bash
+node starknet/its/its.js <subcommand> [options]
 ```
-Usage: deploy-token [options]
 
-Deploy a new interchain token on Starknet via InterchainTokenFactory
+**Available Subcommands:**
 
-Options:
-  --salt <salt>                      Salt for token deployment
-  --name <name>                      Token name
-  --symbol <symbol>                  Token symbol
-  --decimals <decimals>              Token decimals
-  --initialSupply <amount>           Initial supply to mint (defaults to 0)
-  --minter <address>                 Minter address (mintership will be
-                                     transferred to this address)
-  -e, --env <env>                    environment (choices: "devnet-amplifier",
-                                     "mainnet", "stagenet", "testnet", default:
-                                     "testnet", env: ENV)
-  -y, --yes                          skip deployment prompt confirmation (env:
-                                     YES)
-  -p, --privateKey < privateKey >    private key for Starknet account(testnet
-                                     only, not required for offline tx
-                                     generation) (env: STARKNET_PRIVATE_KEY)
-  --accountAddress <accountAddress>  Starknet account address (env:
-                                     STARKNET_ACCOUNT_ADDRESS)
-  -h, --help                         display help for command
+#### Administrative Operations
+- `set-factory-address` - Set the factory address for ITS
+- `set-pause-status` - Pause or unpause the service
+- `set-trusted-chain` - Add a trusted chain
+- `remove-trusted-chain` - Remove a trusted chain
 
-Note: This command deploys tokens locally via the InterchainTokenFactory.
-- If initialSupply > 0, tokens will be minted to the deployer and mintership transferred to the minter
-- If initialSupply = 0, the minter address will be set directly
-- For cross-chain deployment, use a separate command after local deployment
-```
+#### Query Operations
+- `chain-name` - Get the chain name
+- `token-manager-address` - Get token manager address for a token ID
+- `registered-token-address` - Get registered token address
+- `interchain-token-address` - Get predicted interchain token address
+- `is-trusted-chain` - Check if a chain is trusted
+
+#### Token Operations
+- `interchain-transfer` - Transfer tokens across chains
+- `register-token-metadata` - Register token metadata for cross-chain compatibility
+- `set-flow-limits` - Set flow limits for multiple tokens
 
 **Examples:**
 
-Deploy with initial supply:
 ```bash
-npx ts-node starknet/its/deploy-token.ts --salt my-token-salt --name "My Token" --symbol "MTK" --decimals 18 --initialSupply 1000000 --minter 0x123... --privateKey 0x... --accountAddress 0x...
+# Set factory address (uses config if not specified)
+node starknet/its/its.js set-factory-address --factoryAddress 0x123...
+
+# Transfer tokens across chains
+node starknet/its/its.js interchain-transfer \
+  --tokenId 0x123... \
+  --destinationChain ethereum \
+  --destinationAddress 0x456... \
+  --amount 1000000 \
+  --gasValue 100000
+
+# Set flow limits for multiple tokens
+node starknet/its/its.js set-flow-limits \
+  --tokenIds 0x123...,0x456... \
+  --flowLimits 1000000,2000000
+
+# Query operations (no authentication required)
+node starknet/its/its.js chain-name
+node starknet/its/its.js is-trusted-chain --chainName ethereum
 ```
 
-Deploy without initial supply (minter is required in this case):
+### ITF Script
+
+Factory operations for deploying and managing interchain tokens.
+
 ```bash
-npx ts-node starknet/its/deploy-token.ts --salt my-token-salt --name "My Token" --symbol "MTK" --decimals 18 --minter 0x456... --privateKey 0x... --accountAddress 0x...
+node starknet/its/itf.js <subcommand> [options]
 ```
 
-### Register Custom Token
+**Available Subcommands:**
 
-```
-Usage: register-token [options]
+#### Query Operations
+- `interchain-token-service` - Get ITS address from factory
+- `chain-name` - Get chain name from factory
+- `interchain-token-id` - Calculate token ID from deployer and salt
+- `canonical-interchain-token-id` - Calculate canonical token ID
+- `linked-token-id` - Calculate linked token ID
+- `interchain-token-deploy-salt` - Calculate deployment salt
+- `canonical-interchain-token-deploy-salt` - Calculate canonical deployment salt
+- `linked-token-deploy-salt` - Calculate linked token deployment salt
 
-Register an existing token for cross-chain use
+#### Deployment Operations
+- `deploy-interchain-token` - Deploy a new interchain token
+- `register-canonical-interchain-token` - Register existing token as canonical
+- `deploy-remote-canonical-interchain-token` - Deploy canonical token on remote chain
+- `register-custom-token` - Register custom token with parameters
+- `link-token` - Link tokens across chains
 
-Options:
-  --salt <salt>                      Salt for token registration
-  --tokenAddress <address>           Address of the existing token
-  --tokenManagerType <type>          Token manager type (native, mintBurnFrom,
-                                     lockUnlock, lockUnlockFee, mintBurn)
-  --operator <address>               Operator address (defaults to current
-                                     account)
-  -e, --env <env>                    environment (choices: "devnet-amplifier",
-                                     "mainnet", "stagenet", "testnet", default:
-                                     "testnet", env: ENV)
-  -y, --yes                          skip deployment prompt confirmation (env:
-                                     YES)
-  -p, --privateKey < privateKey >    private key for Starknet account(testnet
-                                     only, not required for offline tx
-                                     generation) (env: STARKNET_PRIVATE_KEY)
-  --accountAddress <accountAddress>  Starknet account address (env:
-                                     STARKNET_ACCOUNT_ADDRESS)
-  -h, --help                         display help for command
-```
+#### Remote Deployment Management
+- `approve-deploy-remote-interchain-token` - Approve remote deployment with custom minter
+- `revoke-deploy-remote-interchain-token` - Revoke remote deployment approval
+- `deploy-remote-interchain-token` - Deploy token on remote chain (no minter)
+- `deploy-remote-interchain-token-with-minter` - Deploy token on remote chain with minter
 
-**Example:**
+**Examples:**
+
 ```bash
-npx ts-node starknet/its/register-token.ts --salt my-salt --tokenAddress 0x... --tokenManagerType lockUnlock --privateKey 0x... --accountAddress 0x...
+# Calculate token IDs
+node starknet/its/itf.js interchain-token-id \
+  --deployer 0x123... \
+  --salt my-salt
+
+# Deploy a new interchain token
+node starknet/its/itf.js deploy-interchain-token \
+  --salt my-token \
+  --name "My Token" \
+  --symbol MTK \
+  --decimals 18 \
+  --initialSupply 1000000 \
+  --minter 0x123...
+
+# Cross-chain deployment
+node starknet/its/itf.js deploy-remote-canonical-interchain-token \
+  --tokenAddress 0x123... \
+  --destinationChain ethereum \
+  --gasValue 100000
 ```
 
-### Register Canonical Token
+### TokenManager Script
 
-```
-Usage: register-canonical-token [options]
+Manage individual token operations and flow limits.
 
-Register a canonical token for cross-chain use (uses lock/unlock mechanism)
-
-Options:
-  --tokenAddress <address>           Address of the canonical token to register
-  --factoryAddress <address>         InterchainTokenFactory address (defaults
-                                     to config)
-  -e, --env <env>                    environment (choices: "devnet-amplifier",
-                                     "mainnet", "stagenet", "testnet", default:
-                                     "testnet", env: ENV)
-  -y, --yes                          skip deployment prompt confirmation (env:
-                                     YES)
-  -p, --privateKey < privateKey >    private key for Starknet account(testnet
-                                     only, not required for offline tx
-                                     generation) (env: STARKNET_PRIVATE_KEY)
-  --accountAddress <accountAddress>  Starknet account address (env:
-                                     STARKNET_ACCOUNT_ADDRESS)
-  -h, --help                         display help for command
-```
-
-**Example:**
 ```bash
-npx ts-node starknet/its/register-canonical-token.ts --tokenAddress 0x... --privateKey 0x... --accountAddress 0x...
+node starknet/its/token-manager.js <subcommand> [options]
 ```
 
-## Cross-Chain Operations
+**Available Subcommands:**
 
-### Interchain Transfer
+#### Query Operations
+- `interchain-token-id` - Get the token ID managed
+- `token-address` - Get the token address
+- `token-address-from-params` - Derive token address from parameters
+- `implementation-type` - Get token manager type
+- `flow-limit` - Get current flow limit
+- `flow-out-amount` - Get current flow out amount
+- `flow-in-amount` - Get current flow in amount
+- `is-flow-limiter` - Check if address is flow limiter
+- `params` - Get token manager parameters
 
-```
-Usage: transfer [options]
+#### Management Operations
+- `add-flow-in` - Add to flow in amount
+- `add-flow-out` - Add to flow out amount
+- `set-flow-limit` - Set the flow limit
+- `transfer-flow-limiter` - Transfer flow limiter role
+- `add-flow-limiter` - Add a flow limiter
+- `remove-flow-limiter` - Remove a flow limiter
 
-Transfer tokens across chains using InterchainTokenService
+#### Helper Operations
+- `get-token-manager-by-id` - Get token manager address from ITS using token ID
 
-Options:
-  --tokenId <id>                     Token ID (hex string)
-  --destinationChain <chain>         Destination chain name
-  --destinationAddress <address>     Destination address
-  --amount <amount>                  Amount to transfer (in smallest unit)
-  --data <data>                      Optional data for contract execution when `destinationAddress` is a contract address
-                                     (expects an array of bytes as hex string e.g. 0xabcd)
-  --gasValue <value>                 Gas value for cross-chain execution
-  --gasToken <token>                 Gas token (currently only STRK is supported)
-                                     (default: "STRK")
-  -e, --env <env>                    environment (choices: "devnet-amplifier",
-                                     "mainnet", "stagenet", "testnet", default:
-                                     "testnet", env: ENV)
-  -y, --yes                          skip deployment prompt confirmation (env:
-                                     YES)
-  -p, --privateKey < privateKey >    private key for Starknet account(testnet
-                                     only, not required for offline tx
-                                     generation) (env: STARKNET_PRIVATE_KEY)
-  --accountAddress <accountAddress>  Starknet account address (env:
-                                     STARKNET_ACCOUNT_ADDRESS)
-  -h, --help                         display help for command
-```
+**Examples:**
 
-**Example:**
 ```bash
-npx ts-node starknet/its/transfer.ts --tokenId 0x... --destinationChain ethereum --destinationAddress 0x... --amount 1000000 --gasValue 100000 --gasToken STRK --privateKey 0x... --accountAddress 0x...
+# Query token manager info
+node starknet/its/token-manager.js implementation-type \
+  --tokenManagerAddress 0x123...
+
+# Set flow limit
+node starknet/its/token-manager.js set-flow-limit \
+  --tokenManagerAddress 0x123... \
+  --flowLimit 1000000
+
+# Get token manager by token ID
+node starknet/its/token-manager.js get-token-manager-by-id \
+  --tokenId 0x789...
 ```
 
-### Link Token
+### InterchainToken Script
 
-```
-Usage: link-token [options]
+Direct token operations for minting, burning, and minter management.
 
-Link a token across chains using InterchainTokenService
-
-Options:
-  --salt <salt>                        Salt used for token registration
-  --destinationChain <chain>           Destination chain name
-  --destinationTokenAddress <address>  Token address on destination chain
-  --tokenManagerType <type>            Token manager type (native,
-                                       mintBurnFrom, lockUnlock, lockUnlockFee,
-                                       mintBurn)
-  --operator <address>                 Operator address for the linked token
-                                       (defaults to current account)
-  --gasValue <value>                   Gas value for cross-chain linking
-  --gasToken <token>                   Gas token (currently only STRK is
-                                       supported) (default: "STRK")
-  -e, --env <env>                      environment (choices:
-                                       "devnet-amplifier", "mainnet",
-                                       "stagenet", "testnet", default:
-                                       "testnet", env: ENV)
-  -y, --yes                            skip deployment prompt confirmation
-                                       (env: YES)
-  -p, --privateKey < privateKey >      private key for Starknet account(testnet
-                                       only, not required for offline tx
-                                       generation) (env: STARKNET_PRIVATE_KEY)
-  --accountAddress <accountAddress>    Starknet account address (env:
-                                       STARKNET_ACCOUNT_ADDRESS)
-  -h, --help                           display help for command
-```
-
-**Example:**
 ```bash
-npx ts-node starknet/its/link-token.ts --salt my-link-salt --destinationChain polygon --destinationTokenAddress 0x... --tokenManagerType lockUnlock --gasValue 100000 --gasToken STRK --privateKey 0x... --accountAddress 0x...
+node starknet/its/interchain-token.js <subcommand> [options]
 ```
 
-### Deploy Remote Canonical Token
+**Available Subcommands:**
 
-```
-Usage: deploy-remote-canonical-token [options]
+#### Minter Management
+- `transfer-mintership` - Transfer minter role to new address
+- `is-minter` - Check if address has minter role
 
-Deploy a canonical token representation on a remote chain
+#### Token Operations
+- `mint` - Mint new tokens to recipient
+- `burn` - Burn tokens from address
 
-Options:
-  --tokenAddress <address>           Address of the original canonical token
-  --destinationChain <chain>         Destination chain name
-  --gasValue <value>                 Gas value for cross-chain deployment
-  --gasToken <token>                 Gas token (currently only STRK is supported)
-                                     (default: "STRK")
-  --factoryAddress <address>         InterchainTokenFactory address (defaults
-                                     to config)
-  -e, --env <env>                    environment (choices: "devnet-amplifier",
-                                     "mainnet", "stagenet", "testnet", default:
-                                     "testnet", env: ENV)
-  -y, --yes                          skip deployment prompt confirmation (env:
-                                     YES)
-  -p, --privateKey < privateKey >    private key for Starknet account(testnet
-                                     only, not required for offline tx
-                                     generation) (env: STARKNET_PRIVATE_KEY)
-  --accountAddress <accountAddress>  Starknet account address (env:
-                                     STARKNET_ACCOUNT_ADDRESS)
-  -h, --help                         display help for command
-```
+#### Helper Operations
+- `get-token-by-id` - Get interchain token address from ITS using token ID
+- `token-info` - Get basic token information (name, symbol, decimals, supply)
 
-**Example:**
+**Examples:**
+
 ```bash
-npx ts-node starknet/its/deploy-remote-canonical-token.ts --tokenAddress 0x... --destinationChain avalanche --gasValue 100000 --gasToken STRK --privateKey 0x... --accountAddress 0x...
-```
+# Transfer minter role
+node starknet/its/interchain-token.js transfer-mintership \
+  --tokenAddress 0x123... \
+  --newMinter 0x456...
 
-## Management Operations
+# Mint tokens
+node starknet/its/interchain-token.js mint \
+  --tokenAddress 0x123... \
+  --recipient 0x789... \
+  --amount 1000000
 
-### Manage Trusted Chains
-
-```
-Usage: manage-chains [options]
-
-Manage trusted chains in InterchainTokenService
-
-Options:
-  --action <action>                  Action to perform (add, remove, check)
-  --chainName <name>                 Name of the chain to manage
-  -e, --env <env>                    environment (choices: "devnet-amplifier",
-                                     "mainnet", "stagenet", "testnet", default:
-                                     "testnet", env: ENV)
-  -y, --yes                          skip deployment prompt confirmation (env:
-                                     YES)
-  -p, --privateKey < privateKey >    private key for Starknet account(testnet
-                                     only, not required for offline tx
-                                     generation) (env: STARKNET_PRIVATE_KEY)
-  --accountAddress <accountAddress>  Starknet account address (env:
-                                     STARKNET_ACCOUNT_ADDRESS)
-  -h, --help                         display help for command
-
-Examples:
-  Add a trusted chain:
-    $ manage-chains --action add --chainName ethereum
-
-  Remove a trusted chain:
-    $ manage-chains --action remove --chainName polygon
-
-  Check if a chain is trusted:
-    $ manage-chains --action check --chainName avalanche
-
-Note: Only the contract owner can add or remove trusted chains.
-The 'check' action can be performed by anyone.
-```
-
-### Set Flow Limits
-
-```
-Usage: flow-limits [options]
-
-Set flow limits for multiple tokens in InterchainTokenService
-
-Options:
-  --tokenIds <ids>                   Comma-separated list of token IDs (hex
-                                     strings)
-  --flowLimits <limits>              Comma-separated list of flow limits (in
-                                     smallest unit)
-  -e, --env <env>                    environment (choices: "devnet-amplifier",
-                                     "mainnet", "stagenet", "testnet", default:
-                                     "testnet", env: ENV)
-  -y, --yes                          skip deployment prompt confirmation (env:
-                                     YES)
-  -p, --privateKey < privateKey >    private key for Starknet account(testnet
-                                     only, not required for offline tx
-                                     generation) (env: STARKNET_PRIVATE_KEY)
-  --accountAddress <accountAddress>  Starknet account address (env:
-                                     STARKNET_ACCOUNT_ADDRESS)
-  -h, --help                         display help for command
-
-Examples:
-  Set flow limit for a single token:
-    $ flow-limits --tokenIds 0x123...abc --flowLimits 1000000
-
-  Set flow limits for multiple tokens:
-    $ flow-limits --tokenIds 0x123...abc,0x456...def,0x789...ghi --flowLimits 1000000,2000000,500000
-
-Note: The number of token IDs must match the number of flow limits.
-Flow limits are specified in the smallest unit of the token (e.g., wei for 18 decimal tokens).
-```
-
-### Manage Service
-
-```
-Usage: manage-service [options]
-
-Manage InterchainTokenService settings and status
-
-Options:
-  --action <action>                  Action to perform (pause, unpause,
-                                     transfer-ownership, set-factory-address,
-                                     check-status)
-  --newOwner <address>               New owner address (required for
-                                     transfer-ownership)
-  --factoryAddress <address>         Factory address to set (required for set-factory-address
-                                     and defaults to the config value, unless this flag is used)
-  -e, --env <env>                    environment (choices: "devnet-amplifier",
-                                     "mainnet", "stagenet", "testnet", default:
-                                     "testnet", env: ENV)
-  -y, --yes                          skip deployment prompt confirmation (env:
-                                     YES)
-  -p, --privateKey < privateKey >    private key for Starknet account(testnet
-                                     only, not required for offline tx
-                                     generation) (env: STARKNET_PRIVATE_KEY)
-  --accountAddress <accountAddress>  Starknet account address (env:
-                                     STARKNET_ACCOUNT_ADDRESS)
-  -h, --help                         display help for command
-
-Examples:
-  Pause the service:
-    $ manage-service --action pause
-
-  Unpause the service:
-    $ manage-service --action unpause
-
-  Transfer ownership:
-    $ manage-service --action transfer-ownership --newOwner 0x123...
-
-  Set factory address:
-    $ manage-service --action set-factory-address --factoryAddress 0x456...
-
-  Check service status:
-    $ manage-service --action check-status
-
-Note: Most actions require owner privileges.
-The 'check-status' action can be performed by anyone.
-```
-
-## Query Operations
-
-### Query ITS Information
-
-```
-Usage: query [options]
-
-Query InterchainTokenService for token and chain information
-
-Options:
-  --query <type>                     Query type (token-manager, token-address,
-                                     interchain-token-address, chain-name,
-                                     trusted-chain, flow-limit, token-info)
-  --tokenId <id>                     Token ID (required for token queries)
-  --chainName <name>                 Chain name (required for trusted-chain
-                                     query)
-  --itsAddress <address>             InterchainTokenService address (defaults
-                                     to config)
-  -e, --env <env>                    environment (choices: "devnet-amplifier",
-                                     "mainnet", "stagenet", "testnet", default:
-                                     "testnet", env: ENV)
-  -y, --yes                          skip deployment prompt confirmation (env:
-                                     YES)
-  -p, --privateKey < privateKey >    private key for Starknet account(testnet
-                                     only, not required for offline tx
-                                     generation) (env: STARKNET_PRIVATE_KEY)
-  --accountAddress <accountAddress>  Starknet account address (env:
-                                     STARKNET_ACCOUNT_ADDRESS)
-  -h, --help                         display help for command
-
-Examples:
-  Get token manager address:
-    $ query --query token-manager --tokenId 0x123...
-
-  Get registered token address:
-    $ query --query token-address --tokenId 0x123...
-
-  Get predicted interchain token address:
-    $ query --query interchain-token-address --tokenId 0x123...
-
-  Get chain name:
-    $ query --query chain-name
-
-  Check if chain is trusted:
-    $ query --query trusted-chain --chainName ethereum
-
-  Get flow limit information:
-    $ query --query flow-limit --tokenId 0x123...
-
-  Get complete token information:
-    $ query --query token-info --tokenId 0x123...
-```
-
-## Utility Commands
-
-### Calculate Token ID
-
-```
-Usage: calculate-token-id [options]
-
-Calculate deterministic token IDs for InterchainTokenService
-
-Options:
-  --type <type>                      Type of token ID to calculate (interchain,
-                                     canonical, linked)
-  --deployer <address>               Deployer address (required for interchain
-                                     and linked types)
-  --salt <salt>                      Salt value (required for interchain and
-                                     linked types)
-  --tokenAddress <address>           Token address (required for canonical
-                                     type)
-  --itsAddress <address>             InterchainTokenService address (defaults
-                                     to config)
-  --factoryAddress <address>         InterchainTokenFactory address (defaults
-                                     to config)
-  -e, --env <env>                    environment (choices: "devnet-amplifier",
-                                     "mainnet", "stagenet", "testnet", default:
-                                     "testnet", env: ENV)
-  -y, --yes                          skip deployment prompt confirmation (env:
-                                     YES)
-  -p, --privateKey < privateKey >    private key for Starknet account(testnet
-                                     only, not required for offline tx
-                                     generation) (env: STARKNET_PRIVATE_KEY)
-  --accountAddress <accountAddress>  Starknet account address (env:
-                                     STARKNET_ACCOUNT_ADDRESS)
-  -h, --help                         display help for command
-
-Examples:
-  Calculate interchain token ID:
-    $ calculate-token-id --type interchain --deployer 0x123... --salt my-salt
-
-  Calculate canonical token ID:
-    $ calculate-token-id --type canonical --tokenAddress 0x456...
-
-  Calculate linked token ID:
-    $ calculate-token-id --type linked --deployer 0x789... --salt link-salt
-
-Token ID Types:
-  - interchain: For tokens deployed via deploy_interchain_token
-  - canonical: For existing tokens registered as canonical
-  - linked: For tokens linked via the factory
+# Get token info
+node starknet/its/interchain-token.js token-info \
+  --tokenAddress 0x123...
 ```
 
 ## Offline Signing Support
@@ -559,17 +339,32 @@ All ITS commands support offline signing for mainnet operations. Add the `--offl
 
 **Example:**
 ```bash
-npx ts-node starknet/its/transfer.ts --tokenId 0x... --destinationChain ethereum --destinationAddress 0x... --amount 1000000 --gasValue 100000 --gasToken STRK --offline --nonce 5 --accountAddress 0x...
+node starknet/its/its.js interchain-transfer \
+  --tokenId 0x... \
+  --destinationChain ethereum \
+  --destinationAddress 0x... \
+  --amount 1000000 \
+  --gasValue 100000 \
+  --offline \
+  --nonce 5 \
+  --accountAddress 0x...
 ```
 
 See the main README for complete offline signing workflow instructions.
 
-## Notes
+All ITS commands support offline signing for mainnet operations. Add the `--offline` flag along with appropriate gas parameters to generate unsigned transactions for hardware wallet signing.
 
-- All commands use the `starknet/its/` directory path
-- Token IDs are deterministic and consistent across all chains
-- Always ensure destination chains are trusted before transfers
-- Flow limits help prevent excessive token movements
-- Canonical tokens use lock/unlock, new tokens use mint/burn
-- Gas values depend on destination chain requirements
+**Example:**
+```bash
+node starknet/its/its.js interchain-transfer \
+  --tokenId 0x... \
+  --destinationChain ethereum \
+  --destinationAddress 0x... \
+  --amount 1000000 \
+  --gasValue 100000 \
+  --offline \
+  --nonce 5 \
+  --accountAddress 0x...
+```
 
+See the main README for complete offline signing workflow instructions.
