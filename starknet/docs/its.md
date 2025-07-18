@@ -132,9 +132,10 @@ npx ts-node starknet/its/deploy-itf.ts \
 ### ITS Script
 
 The main entry point for InterchainTokenService core operations.
+All write txs use the contract address from the config, while all read txs also accept an `--itsAddress` flag.
 
 ```bash
-node starknet/its/its.js <subcommand> [options]
+npx ts-node starknet/its/its.ts <subcommand> [options]
 ```
 
 **Available Subcommands:**
@@ -161,10 +162,10 @@ node starknet/its/its.js <subcommand> [options]
 
 ```bash
 # Set factory address (uses config if not specified)
-node starknet/its/its.js set-factory-address --factoryAddress 0x123...
+npx ts-node starknet/its/its.ts set-factory-address --factoryAddress 0x123...
 
 # Transfer tokens across chains
-node starknet/its/its.js interchain-transfer \
+npx ts-node starknet/its/its.ts interchain-transfer \
   --tokenId 0x123... \
   --destinationChain ethereum \
   --destinationAddress 0x456... \
@@ -172,21 +173,22 @@ node starknet/its/its.js interchain-transfer \
   --gasValue 100000
 
 # Set flow limits for multiple tokens
-node starknet/its/its.js set-flow-limits \
+npx ts-node starknet/its/its.ts set-flow-limits \
   --tokenIds 0x123...,0x456... \
   --flowLimits 1000000,2000000
 
 # Query operations (no authentication required)
-node starknet/its/its.js chain-name
-node starknet/its/its.js is-trusted-chain --chainName ethereum
+npx ts-node starknet/its/its.ts chain-name
+npx ts-node starknet/its/its.ts is-trusted-chain --chainName ethereum
 ```
 
 ### ITF Script
 
 Factory operations for deploying and managing interchain tokens.
+All write txs use the contract address from the config, while all read txs also accept an `--factoryAddress` flag.
 
 ```bash
-node starknet/its/itf.js <subcommand> [options]
+npx ts-node starknet/its/itf.ts <subcommand> [options]
 ```
 
 **Available Subcommands:**
@@ -218,12 +220,12 @@ node starknet/its/itf.js <subcommand> [options]
 
 ```bash
 # Calculate token IDs
-node starknet/its/itf.js interchain-token-id \
+npx ts-node starknet/its/itf.ts interchain-token-id \
   --deployer 0x123... \
   --salt my-salt
 
 # Deploy a new interchain token
-node starknet/its/itf.js deploy-interchain-token \
+npx ts-node starknet/its/itf.ts deploy-interchain-token \
   --salt my-token \
   --name "My Token" \
   --symbol MTK \
@@ -232,7 +234,7 @@ node starknet/its/itf.js deploy-interchain-token \
   --minter 0x123...
 
 # Cross-chain deployment
-node starknet/its/itf.js deploy-remote-canonical-interchain-token \
+npx ts-node starknet/its/itf.ts deploy-remote-canonical-interchain-token \
   --tokenAddress 0x123... \
   --destinationChain ethereum \
   --gasValue 100000
@@ -241,9 +243,10 @@ node starknet/its/itf.js deploy-remote-canonical-interchain-token \
 ### TokenManager Script
 
 Manage individual token operations and flow limits.
+All txs require `--tokenManagerAddress` flag.
 
 ```bash
-node starknet/its/token-manager.js <subcommand> [options]
+npx ts-node starknet/its/token-manager.ts <subcommand> [options]
 ```
 
 **Available Subcommands:**
@@ -274,25 +277,26 @@ node starknet/its/token-manager.js <subcommand> [options]
 
 ```bash
 # Query token manager info
-node starknet/its/token-manager.js implementation-type \
+npx ts-node starknet/its/token-manager.ts implementation-type \
   --tokenManagerAddress 0x123...
 
 # Set flow limit
-node starknet/its/token-manager.js set-flow-limit \
+npx ts-node starknet/its/token-manager.ts set-flow-limit \
   --tokenManagerAddress 0x123... \
   --flowLimit 1000000
 
 # Get token manager by token ID
-node starknet/its/token-manager.js get-token-manager-by-id \
+npx ts-node starknet/its/token-manager.ts get-token-manager-by-id \
   --tokenId 0x789...
 ```
 
 ### InterchainToken Script
 
 Direct token operations for minting, burning, and minter management.
+All txs require `--tokenAddress` flag.
 
 ```bash
-node starknet/its/interchain-token.js <subcommand> [options]
+npx ts-node starknet/its/interchain-token.ts <subcommand> [options]
 ```
 
 **Available Subcommands:**
@@ -313,18 +317,18 @@ node starknet/its/interchain-token.js <subcommand> [options]
 
 ```bash
 # Transfer minter role
-node starknet/its/interchain-token.js transfer-mintership \
+npx ts-node starknet/its/interchain-token.ts transfer-mintership \
   --tokenAddress 0x123... \
   --newMinter 0x456...
 
 # Mint tokens
-node starknet/its/interchain-token.js mint \
+npx ts-node starknet/its/interchain-token.ts mint \
   --tokenAddress 0x123... \
   --recipient 0x789... \
   --amount 1000000
 
 # Get token info
-node starknet/its/interchain-token.js token-info \
+npx ts-node starknet/its/interchain-token.ts token-info \
   --tokenAddress 0x123...
 ```
 
@@ -334,7 +338,7 @@ All ITS commands support offline signing for mainnet operations. Add the `--offl
 
 **Example:**
 ```bash
-node starknet/its/its.js interchain-transfer \
+npx ts-node starknet/its/its.ts interchain-transfer \
   --tokenId 0x... \
   --destinationChain ethereum \
   --destinationAddress 0x... \
@@ -351,7 +355,7 @@ All ITS commands support offline signing for mainnet operations. Add the `--offl
 
 **Example:**
 ```bash
-node starknet/its/its.js interchain-transfer \
+npx ts-node starknet/its/its.ts interchain-transfer \
   --tokenId 0x... \
   --destinationChain ethereum \
   --destinationAddress 0x... \
