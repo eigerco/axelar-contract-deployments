@@ -70,7 +70,7 @@ Based on the the passed `--env` flag value:
 - ✅ Multicall support for batching operations
 - ✅ Gas Service contract operations
 - ✅ Operators contract management
-- 🔄 ITS (Interchain Token Service) - *coming soon*
+- ✅ InterchainTokenService (ITS) - full token bridging support
 
 ## 🛠️ CLI Options Reference
 
@@ -135,10 +135,16 @@ Based on the the passed `--env` flag value:
 - **[Offline Transaction Workflow](./docs/offline.md)** - Complete offline signing workflow for mainnet
 
 ### Contract-Specific Guides
-- **[Gateway Operations](./docs/gateway.md)** - Cross-chain messaging and gateway management
-- **[Gas Service Operations](./docs/gas-service.md)** - Gas payment and management commands
-- **[Governance Operations](./docs/governance.md)** - Governance proposal and execution commands
-- **[Operators Operations](./docs/operators.md)** - Operator management and configuration
+- **[Gateway Operations](./docs/gateway-test-commands.md)** - Cross-chain messaging and gateway management
+- **[InterchainTokenService (ITS)](./docs/its.md)** - Token bridging and cross-chain token operations
+- **[Gas Service Operations](./docs/gas-service-test-commands.md)** - Gas payment and management
+- **[Governance Operations](./docs/governance-test-commands.md)** - Governance and voting operations
+- **[Operators Management](./docs/operators-test-commands.md)** - Operator management and control
+
+### Workflow Guides
+- **[Offline Signing](./docs/OFFLINE-SIGNING.md)** - Complete guide for mainnet offline workflow
+- **[Key Management](./key-management.md)** - Security guidelines and key management
+
 
 ## 🔍 Troubleshooting
 
