@@ -8,7 +8,7 @@ This directory contains deployment and operational scripts for Axelar contracts 
 
 - Node.js >= 18
 - All dependencies installed
-- `scarb` >= 2.11.4
+- `scarb` 2.11.4 (tested with this version, but newer _might_ also work)
 - For mainnet: Ledger hardware wallet
 
 ### Installation
@@ -36,7 +36,7 @@ Before you start running contract related scripts you need to:
 1. Build all your contracts using `scarb build`. You can run that command in the root of giza-axelar-starknet and it will build all contracts for you.
 2. Create and fund a starknet account (single or multi signature).
 2. Declare all the contracts you plan to deploy using the `declare.ts` script, which will also create the objects in the `axelar-chain-config` JSON file.
-3. Deploy all the contracts you've declared using the `deploy.ts` script.
+3. Deploy all the contracts you've declared using the `deploy-contract.ts` script, except the for contracts with their own [scripts](#contract-specific-deployment-scripts).
 
 These 3 steps will update the axelar-chains-config JSON file for the `--env` you use in your commands.
 
@@ -128,11 +128,16 @@ Based on the the passed `--env` flag value:
 
 ### Contract Operations
 - **[Contract Declaration (online only)](./docs/declare.md)** - Declare contract classes on-chain
-- **[Contract Deployment](./docs/deploy.md)** - Deploy contract instances
+- **[Contract Deployment](./docs/deploy.md)** - Deploy arbitrary contract instances (for specific contracts, see ITS, ITF, and Gateway deployment scripts below)
 - **[Contract Upgrades](./docs/upgrade.md)** - Upgrade existing contracts
 - **[Multicall Operations](./docs/multicall.md)** - Batch multiple calls in one transaction
 - **[Multisig Management](./docs/multisig.md)** - Argent multisig account operations
 - **[Offline Transaction Workflow](./docs/offline.md)** - Complete offline signing workflow for mainnet
+
+### Contract-Specific Deployment Scripts
+- **deploy-its.ts** - Deploy InterchainTokenService contract
+- **deploy-itf.ts** - Deploy InterchainTokenFactory contract  
+- **deploy-amplifier-gateway.ts** - Deploy Amplifier Gateway contract
 
 ### Contract-Specific Guides
 - **[Gateway Operations](./docs/gateway-test-commands.md)** - Cross-chain messaging and gateway management

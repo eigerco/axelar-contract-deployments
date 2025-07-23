@@ -1,6 +1,129 @@
-# Gateway Test Commands
+# Gateway Commands
 
-This file contains example commands for testing all gateway functions. Replace the placeholder values with actual values from your test environment.
+This guide covers Gateway deployment and operations on Starknet. All commands support both online and offline execution modes.
+
+## Prerequisites for Deployment
+
+Before deploying the Gateway contract, you must:
+
+1. **Build the contract** - Compile the Gateway contract using scarb:
+   ```bash
+   cd /path/to/giza-axelar-starknet
+   scarb build
+   ```
+
+2. **Declare the contract** - Declare the compiled contract on-chain to get its class hash:
+   ```bash
+   npx ts-node starknet/declare-contract.ts \
+     --contractConfigName AxelarGateway \
+     --contractPath /path/to/giza-axelar-starknet/target/dev/gateway_AxelarGateway.contract_class.json \
+     --env testnet \
+     --privateKey 0x... \
+     --accountAddress 0x...
+   ```
+
+For detailed instructions on contract declaration, see the [Contract Declaration documentation](./declare.md).
+
+## Deployment
+
+
+| Network              | `minimumRotationDelay` | `deployer`                                   |
+| -------------------- | ---------------------- | -------------------------------------------- |
+| **Devnet-amplifier** | `0`                    | `0x03D268008DcA0F241d2cF93578e1428dB0E94bdE3db22C93bCa93873Bc72851e` |
+| **Stagenet**         | `300`                  | `TBD` |
+| **Testnet**          | `3600`                 | `TBD` |
+| **Mainnet**          | `86400`                | `TBD` |
+
+
+### Deployment
+
+Deploy the Amplifier Gateway contract on Starknet. This is the main contract that handles cross-chain messaging and validation.
+
+```
+Usage: deploy-amplifier-gateway [options]
+
+Deploy Amplifier Gateway contract on Starknet
+
+Options:
+  --contractConfigName <name>         Contract configuration name (e.g., AxelarGateway)
+  --previousSignersRetention <value>  Previous signers retention value (default: 15)
+  --minimumRotationDelay <seconds>    Minimum rotation delay in seconds (default: 86400)
+  --domainSeparator <value>           Domain separator (keccak256 hash or "offline" for automatic calculation)
+  --owner <address>                   Owner contract address
+  --operator <address>                Operator contract address (optional)
+  --salt <salt>                       Salt for deterministic deployment (default: "0")
+  -e, --env <env>                     environment (choices: "devnet-amplifier",
+                                      "mainnet", "stagenet", "testnet", default:
+                                      "testnet", env: ENV)
+  -y, --yes                           skip deployment prompt confirmation (env:
+                                      YES)
+  -p, --privateKey < privateKey >     private key for Starknet account(testnet
+                                      only, not required for offline tx
+                                      generation) (env: STARKNET_PRIVATE_KEY)
+  --accountAddress <accountAddress>   Starknet account address (env:
+                                      STARKNET_ACCOUNT_ADDRESS)
+  --offline                           Generate unsigned transaction for offline signing
+  --estimate                          Estimate gas costs
+  --nonce <nonce>                     Account nonce (required for offline)
+  -h, --help                          display help for command
+```
+
+**Note:** This deployment script supports offline mode and gas estimation, using the universal deployer pattern.
+
+**Default Values:**
+- `previousSignersRetention`: 15 (number of previous signer sets to retain)
+- `minimumRotationDelay`: 86400 seconds (24 hours) - but consider using network-specific values shown in the table above
+
+**Domain Separator:** 
+- Use `--domainSeparator offline` to automatically calculate it using: `keccak256(axelarId + routerAddress + network)`
+- Or provide a manual hex hash value (e.g., `0x123...`)
+- For local deployments, it defaults to `0x0000...0000` if not provided
+
+**Example (Online - Testnet with custom rotation delay):**
+```bash
+npx ts-node starknet/deploy-amplifier-gateway.ts \
+  --env testnet \
+  --contractConfigName AxelarGateway \
+  --minimumRotationDelay 3600 \
+  --domainSeparator offline \
+  --owner 0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef \
+  --operator 0xfedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210 \
+  --salt 0x123 \
+  --privateKey 0x... \
+  --accountAddress 0x...
+```
+
+**Example (Offline - Step 1: Estimate Gas):**
+```bash
+npx ts-node starknet/deploy-amplifier-gateway.ts \
+  --env testnet \
+  --contractConfigName AxelarGateway \
+  --domainSeparator offline \
+  --owner 0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef \
+  --salt 0x123 \
+  --privateKey 0x... \
+  --accountAddress 0x... \
+  --estimate
+```
+
+**Example (Offline - Step 2: Generate Unsigned Transaction):**
+```bash
+npx ts-node starknet/deploy-amplifier-gateway.ts \
+  --env mainnet \
+  --contractConfigName AxelarGateway \
+  --domainSeparator offline \
+  --owner 0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef \
+  --salt 0x123 \
+  --accountAddress 0x... \
+  --offline \
+  --nonce 5 \
+  --l1GasMaxAmount 100000 \
+  --l1GasMaxPricePerUnit 100 \
+  --l2GasMaxAmount 100000 \
+  --l2GasMaxPricePerUnit 100
+```
+
+Note: The script uses default values for previousSignersRetention (15) and minimumRotationDelay (86400). Override them only if needed for your specific deployment.
 
 ## Prerequisites
 
