@@ -164,6 +164,36 @@
           "deployer": "0x0282b4492e08d8b6bbec8dfe7412e42e897eef9c080c5b97be1537433e583bdc",
           "salt": "0",
           "deployedAt": "2025-07-03T12:22:46.499Z"
+        },
+        "InterchainTokenService": {
+          "classHash": "0x12797414e02d6a2057b677068d8493b79d8a54740c24fe1514f64ede0a6e851",
+          "declaredAt": "2025-07-14T15:03:15.051Z",
+          "deployedAt": "2025-07-14T20:05:15.426Z",
+          "address": "0xa896a5d40674bb10042d85d89fe344d9b77ccfd8f18d64f9dfed8e79dee6b0",
+          "deploymentTransactionHash": "0x1b7f4951a441ed9b9a974b5a4619ec9bf7fda21564ed1b40bfc15a475524fc6",
+          "deployer": "0x0282b4492e08d8b6bbec8dfe7412e42e897eef9c080c5b97be1537433e583bdc",
+          "salt": "0x5904f04acd5e7b1df0320d0f070fdc086b78c0d0fca677cb775b7b1e79951f"
+        },
+        "InterchainToken": {
+          "classHash": "0x028529ae6d7b7e91c3c9d5a0bb955cbd01d5419c64cb7ef4ce38fb9614217312",
+          "declaredAt": "2025-07-14T15:25:15.051Z"
+        },
+        "TokenManager": {
+          "classHash": "0x5904f04acd5e7b1df0320d0f070fdc086b78c0d0fca677cb775b7b1e79951f",
+          "declaredAt": "2025-07-14T15:52:15.051Z"
+        },
+        "TokenHandler": {
+          "classHash": "0x3728cd528b9d20b9703d9ccd5a1525ced04f0b7c13df14a6abb35c1469a7710",
+          "declaredAt": "2025-07-14T15:54:19.415Z"
+        },
+        "InterchainTokenFactory": {
+          "classHash": "0x29fefdf54c82e4ba432701a0e717be9e328854ed804c818211f5740fa985644",
+          "declaredAt": "2025-07-14T20:33:06.237Z",
+          "address": "0x14c2f7757908f7a4c4c214cd46bfb51432ebc61db46fbec812c36859a9ca685",
+          "deploymentTransactionHash": "0x7543bc300b85ebeecff4bc9875958a8f131a8177782b82f6339d2e567508fad",
+          "deployer": "0x0282b4492e08d8b6bbec8dfe7412e42e897eef9c080c5b97be1537433e583bdc",
+          "salt": "0",
+          "deployedAt": "2025-07-14T20:35:35.872Z"
         }
       },
       "explorer": {
